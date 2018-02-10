@@ -248,23 +248,25 @@ public class Arena{
     public void startBattle(){
         //INSERT YOUR CODE HERE
         int row, player;
-        for(int turn = 1; turn <= MAX_ROUNDS; turn++){
+        for(int round = 1; round <= MAX_ROUNDS; round++){
 
             for(row = 0; row < NUMBER_OF_ROWS; row++){
                 for(player = 0; player < numRowPlayers; player++){
-                    teamA[row][player].PlayerActions.takeAction(this);
+                    teamA[row][player].takeAction(this);
+                    teamA[row][player].fillInternalTurn();
                 }
             }
 
             for(row = 0; row < NUMBER_OF_ROWS; row++){
                 for(player = 0; player < numRowPlayers; player++){
-                    teamA[row][player].PlayerActions.takeAction(this);
+                    teamB[row][player].takeAction(this);
+                    teamA[row][player].fillInternalTurn();
                 }
             }
+            numRounds = round;
 
         }
     }
-
 
     /**
      * This method displays the current area state, and is already implemented for you.
@@ -312,7 +314,7 @@ public class Arena{
 
     }
 
-    public static Player[][] getOpponentTeamPlayers(Player player){
+    public Player[][] getOpponentTeamPlayers(Player player){
         if(player.getPlayerTeam() == Team.A){
             return teamB;
         }else if(player.getPlayerTeam() == Team.B){
@@ -321,7 +323,7 @@ public class Arena{
         return null;
     }
 
-    public static Player[][] getFriendlyTeamPlayers(Player player){
+    public Player[][] getFriendlyTeamPlayers(Player player){
         if(player.getPlayerTeam() == Team.A){
             return teamA;
         }else if(player.getPlayerTeam() == Team.B){

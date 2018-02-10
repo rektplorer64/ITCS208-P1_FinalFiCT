@@ -14,12 +14,13 @@ public class Player{
     private int numSpecialTurns;            //Number of Special Turns of this player
 
     private int current_Turn_In_A_Row;            //Number of Special Turns of this player
-    private int internalturn;
+    private int internalTurn;
 
     private boolean isTaunting;     //Priority of this player to being attacked
-
+    private boolean isSleeping;
     private boolean isCursed;       //Cursed Status of this player
-    private Player curser;          //The player who given the Cursed Status to this player
+    private Player iAmCursing;          //The player who given the Cursed Status by this player
+    private Player cursedBy;          //The player who given the Cursed Status to this player
 
     /**
      * Constructor of class Player, which initializes this player's type, maxHP, atk, numSpecialTurns,
@@ -32,11 +33,15 @@ public class Player{
         this.arena = arena;
         this.type = _type;
         this.team = team;
+
+        this.isSleeping = false;
         this.isTaunting = false;
         this.curser = null;
         this.isCursed = false;
 
+        internalTurn = 0;
         current_Turn_In_A_Row = 0;
+
         switch(_type){
             case Healer:{
                 maxHP = 4790;
@@ -83,7 +88,6 @@ public class Player{
                 numSpecialTurns = 4;
                 break;
             }
-
         }
     }
 
@@ -116,6 +120,18 @@ public class Player{
         return maxHP;
     }
 
+    public int getInternalTurn(){
+        return internalTurn;
+    }
+
+    public void emptyInternalTurn(){
+        this.internalTurn = 0;
+    }
+
+    public void fillInternalTurn(){
+        this.internalTurn = 1;
+    }
+
     /**
      * Returns whether this player is sleeping.
      *
@@ -123,8 +139,7 @@ public class Player{
      */
     public boolean isSleeping(){
         //INSERT YOUR CODE HERE
-
-        return false;
+        return isSleeping;
     }
 
     /**
@@ -272,6 +287,19 @@ public class Player{
         return new PlayerPosition(MinPositionI, MinPositionJ);
     }
 
+    private void statusHandler(){
+        if(this.isTaunting){
+            isTaunting = false;
+        }
+
+        // If THE CURSER has a CURSE TARGET and THE CURSER has internalTurn = 0, The CURSED TARGET will no longer CURSED.
+        if(this.iAmCursing != null){
+            if(internalTurn == 0){
+                iAmCursing.isCursed = false;
+            }
+        }
+    }
+
     /**
      * This method is called by Arena when it is this player's turn to take an action.
      * By default, the player simply just "attack(target)". However, once this player has
@@ -281,15 +309,19 @@ public class Player{
      * @param arena the current arena
      */
     public void takeAction(Arena arena){
+        this.emptyInternalTurn();
+        statusHandler();
         //INSERT YOUR CODE HERE
         if(current_Turn_In_A_Row == numSpecialTurns){
-            useSpecialAbility();
+            useSpecialAbility(arena.getFriendlyTeamPlayers(this), arena.getOpponentTeamPlayers(this));
         }else{
             attack(Player.arena.getOpponentTeamPlayers(Player.this));
         }
+        this.fillInternalTurn();
+        current_Turn_In_A_Row++;
     }
 
-    void useSpecialAbility(Player[][] myTeam, Player[][] theirTeam){
+    private void useSpecialAbility(Player[][] myTeam, Player[][] theirTeam){
         //INSERT YOUR CODE HERE
         switch(type){
             case Healer:{
@@ -314,6 +346,7 @@ public class Player{
             case Cherry:{
             }
         }
+        current_Turn_In_A_Row = 0;
     }
 
     private void taunt(){
@@ -358,13 +391,20 @@ public class Player{
         assert targetPosition != null;
         int i = targetPosition.getI(), j = targetPosition.getI();
 
+        // The Curser will remember their target.
+        this.iAmCursing = theirTeam[i][j];
+
+        // The Target is now cursed.
         theirTeam[i][j].isCursed = true;
+
+        // The Curse Target will remember their curser.
         theirTeam[i][j].curser = Player.this;
     }
 
     private void fortuneCookies(){
 
     }
+
 
     /**
      * This method returns the faction of this player.
@@ -396,6 +436,5 @@ public class Player{
     }
 
     public enum PlayerType{Healer, Tank, Samurai, BlackMage, Phoenix, Cherry}
-
 
 }
