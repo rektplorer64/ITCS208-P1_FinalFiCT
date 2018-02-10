@@ -338,7 +338,7 @@ public class Arena{
         return null;
     }
 
-    public static int getFrontRow(Player[][] teamPlayers){
+    public int getFrontRow(Player[][] teamPlayers){
         int i, j;
         int firstRowCountAlive = 0;
         for(i = 0; i < 1; i++){
