@@ -273,103 +273,97 @@ public class Player{
     }
 
     /**
-     * A Subclass for Basic Attack and Special Attack Functions
+     * This method is called by Arena when it is this player's turn to take an action.
+     * By default, the player simply just "attack(target)". However, once this player has
+     * fought for "numSpecialTurns" rounds, this player must perform "useSpecialAbility(myTeam, theirTeam)"
+     * where each player type performs his own special move.
+     *
+     * @param arena the current arena
      */
-    class PlayerActions{
+    public void takeAction(Arena arena){
+        //INSERT YOUR CODE HERE
+        if(current_Turn_In_A_Row == numSpecialTurns){
+            useSpecialAbility();
+        }else{
+            attack(Player.arena.getOpponentTeamPlayers(Player.this));
+        }
+    }
 
-        /**
-         * This method is called by Arena when it is this player's turn to take an action.
-         * By default, the player simply just "attack(target)". However, once this player has
-         * fought for "numSpecialTurns" rounds, this player must perform "useSpecialAbility(myTeam, theirTeam)"
-         * where each player type performs his own special move.
-         *
-         * @param arena the current arena
-         */
-        public void takeAction(Arena arena){
-            //INSERT YOUR CODE HERE
-            if(current_Turn_In_A_Row == numSpecialTurns){
-                useSpecialAbility();
-            }else{
-                attack(Player.arena.getOpponentTeamPlayers(Player.this));
+    void useSpecialAbility(Player[][] myTeam, Player[][] theirTeam){
+        //INSERT YOUR CODE HERE
+        switch(type){
+            case Healer:{
+                heal(myTeam);
+                break;
+            }
+            case Tank:{
+                taunt();
+                break;
+            }
+            case Phoenix:{
+                break;
+            }
+            case BlackMage:{
+                curse(theirTeam);
+                break;
+            }
+            case Samurai:{
+                doubleSlash(theirTeam);
+                break;
+            }
+            case Cherry:{
             }
         }
+    }
 
-        void useSpecialAbility(Player[][] myTeam, Player[][] theirTeam){
-            //INSERT YOUR CODE HERE
-            switch(type){
-                case Healer:{
-                    heal(myTeam);
-                    break;
-                }
-                case Tank:{
-                    taunt();
-                    break;
-                }
-                case Phoenix:{
-                    break;
-                }
-                case BlackMage:{
-                    curse(theirTeam);
-                    break;
-                }
-                case Samurai:{
-                    doubleSlash(theirTeam);
-                    break;
-                }
-                case Cherry:{
-                }
-            }
+    private void taunt(){
+        isTaunting = true;
+    }
+
+    void attack(Player[][] theirTeam){
+        //INSERT YOUR CODE HERE
+        PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.attack_LowestHP);
+        Player target = theirTeam[targetPosition.getI()][targetPosition.getJ()];
+
+        target.currentHP -= atk;
+        if(target.maxHP < 0){
+            target.maxHP = 0;
         }
+    }
 
-        private void taunt(){
-            isTaunting = true;
-        }
+    private void doubleSlash(Player[][] theirTeam){
+        PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.attack_LowestHP);
+        Player target = theirTeam[targetPosition.getI()][targetPosition.getJ()];
 
-        void attack(Player[][] theirTeam){
-            //INSERT YOUR CODE HERE
-            PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.attack_LowestHP);
-            Player target = theirTeam[targetPosition.getI()][targetPosition.getJ()];
-
+        for(int i = 1; i <= 2; i++){
             target.currentHP -= atk;
             if(target.maxHP < 0){
                 target.maxHP = 0;
             }
         }
+    }
 
-        private void doubleSlash(Player[][] theirTeam){
-            PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.attack_LowestHP);
-            Player target = theirTeam[targetPosition.getI()][targetPosition.getJ()];
+    private void heal(Player[][] myTeam){
+        PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.heal_teamLowestHP);
+        int i = targetPosition.getI(), j = targetPosition.getI();
 
-            for(int i = 1; i <= 2; i++){
-                target.currentHP -= atk;
-                if(target.maxHP < 0){
-                    target.maxHP = 0;
-                }
-            }
+        myTeam[i][j].currentHP += (0.3 * myTeam[i][j].maxHP);
+        if(myTeam[i][j].currentHP > myTeam[i][j].maxHP){
+            myTeam[i][j].currentHP = myTeam[i][j].maxHP;
         }
+    }
 
-        private void heal(Player[][] myTeam){
-            PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.heal_teamLowestHP);
-            int i = targetPosition.getI(), j = targetPosition.getI();
+    void curse(Player[][] theirTeam){
+        PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.attack_LowestHP);
+        assert targetPosition != null;
+        int i = targetPosition.getI(), j = targetPosition.getI();
 
-            myTeam[i][j].currentHP += (0.3 * myTeam[i][j].maxHP);
-            if(myTeam[i][j].currentHP > myTeam[i][j].maxHP){
-                myTeam[i][j].currentHP = myTeam[i][j].maxHP;
-            }
-        }
+        theirTeam[i][j].isCursed = true;
+        theirTeam[i][j].curser = Player.this;
+    }
 
-        void curse(Player[][] theirTeam){
-            PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.attack_LowestHP);
-            assert targetPosition != null;
-            int i = targetPosition.getI(), j = targetPosition.getI();
+    private void fortuneCookies(){
 
-            theirTeam[i][j].isCursed = true;
-            theirTeam[i][j].curser = Player.this;
-        }
-
-        private void fortuneCookies(){
-
-        }
     }
 
     /**
