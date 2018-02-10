@@ -1,31 +1,33 @@
 public class Player{
 
-    public enum TargetingMode{attack_LowestHP, heal_teamLowestHP, revive_teamLowestHP}
-
-    ;
-
+    public enum TargetingMode{attack_LowestHP, heal_teamLowestHP, selectAllTarget, revive_teamLowestHP}
     public enum PlayerType{Healer, Tank, Samurai, BlackMage, Phoenix, Cherry}
 
-    ;
+    private static Arena arena;                   //Specifies the arena which this player joined in.
+    private Arena.Team team;                      //Specifies the team which this player joined in.
 
-    private static Arena arena;
-    private Arena.Team team;    //
+    private PlayerType type;                      //Type of this player. Can be one of either Healer,
+    //Tank, Samurai, BlackMage, or Phoenix
 
-    private PlayerType type;    //Type of this player. Can be one of either Healer, Tank, Samurai, BlackMage, or Phoenix
-
-    private double maxHP;        //Max HP of this player
-    private double currentHP;    //Current HP of this player
-    private double atk;            //Attack power of this player
-    private int numSpecialTurns;            //Number of Special Turns of this player
+    private double maxHP;                         //Max HP of this player
+    private double currentHP;                     //Current HP of this player
+    private double atk;                           //Attack power of this player
+    private int numSpecialTurns;                  //Number of Special Turns of this player
 
     private int current_Turn_In_A_Row;            //Number of Special Turns of this player
-    private int internalTurn;
+    private int internalTurn;                     //A turn meter which will reset to ONE AFTER THE PLAYER takeAction()
+    //And will set to ZERO BEFORE THE PLAYER takeAction()
 
-    private boolean isTaunting;     //Priority of this player to being attacked
+    private boolean isTaunting;                   //Priority of this player to being attacked
+
     private boolean isSleeping;
-    private boolean isCursed;       //Cursed Status of this player
-    private Player iAmCursing;          //The player who given the Cursed Status by this player
-    private Player cursedBy;          //The player who given the Cursed Status to this player
+    private int turnsSinceStartSleeping = 0;
+
+    private boolean isCursed;                     //Cursed Status of this player
+    private Player iAmCursing;                    //The player who given the Cursed Status by this player
+    private Player cursedBy;                      //The player who given the Cursed Status to this player
+
+    private PlayerPosition playerPosition;
 
     /**
      * Constructor of class Player, which initializes this player's type, maxHP, atk, numSpecialTurns,
@@ -33,8 +35,9 @@ public class Player{
      *
      * @param _type The type of Player Character
      */
-    Player(PlayerType _type, Arena.Team team, Arena _arena){
+    Player(PlayerType _type, Arena.Team team, Arena _arena, PlayerPosition playerPosition){
         //INSERT YOUR CODE HERE
+        this.playerPosition = playerPosition;
         arena = _arena;
         this.type = _type;
         this.team = team;
@@ -101,7 +104,7 @@ public class Player{
      *
      * @return currentHP of this player
      */
-    private double getCurrentHP(){
+    public double getCurrentHP(){
         return currentHP;
     }
 
@@ -112,7 +115,7 @@ public class Player{
      */
     Player.PlayerType getType(){
         //INSERT YOUR CODE HERE
-        return null;
+        return type;
     }
 
     /**
@@ -148,7 +151,7 @@ public class Player{
      *
      * @return whether this player is sleeping.
      */
-    private boolean isSleeping(){
+    public boolean isSleeping(){
         return isSleeping;
     }
 
@@ -198,7 +201,7 @@ public class Player{
         int countDead = 0;
         Player[][] targetTeamPlayers;
 
-        int minPositionI = Arena.numRowPlayers, minPositionJ = Arena.numRowPlayers;
+        int minPositionI = Arena.NUMBER_OF_ROWS - 1, minPositionJ = arena.getNumRowPlayers() - 1;
 
         switch(targetingMode){
             case attack_LowestHP:{
@@ -213,7 +216,7 @@ public class Player{
 
                 PlayerPosition playerPosition[] = new PlayerPosition[Arena.MAX_EACH_TYPE];
                 for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
-                    for(j = 0; j < Arena.numRowPlayers; j++){
+                    for(j = 0; j < arena.getNumRowPlayers(); j++){
                         if(targetTeamPlayers[i][j].isTaunting){
                             playerPosition[countTaunt] = new PlayerPosition(i, j);
                             countTaunt++;
@@ -230,10 +233,10 @@ public class Player{
 
                 int countTauntingArray = 0;
                 for(i = 0; i < rowRange; i++){
-                    for(j = 0; j < Arena.numRowPlayers; j++){
+                    for(j = 0; j < arena.getNumRowPlayers(); j++){
                         if(countTaunt == 0){
                             if(targetTeamPlayers[i][j].currentHP / targetTeamPlayers[i][j].maxHP < minValue
-                                    && targetTeamPlayers[i][j].isAlive()){
+                                    && targetTeamPlayers[i][j].isAlive() && targetTeamPlayers[i][j].currentHP > 0){
                                 minValue = targetTeamPlayers[i][j].currentHP / targetTeamPlayers[i][j].maxHP;
                                 if(targetTeamPlayers[i][j].currentHP / targetTeamPlayers[i][j].maxHP == minValue){
                                     if(i < minPositionI && j < minPositionJ){
@@ -261,9 +264,7 @@ public class Player{
                         }
                     }
                 }
-
-
-                break;
+                return new PlayerPosition(minPositionI, minPositionJ);
             }
             case heal_teamLowestHP:{
                 targetTeamPlayers = arena.getFriendlyTeamPlayers(this);
@@ -274,7 +275,7 @@ public class Player{
                     return null;
                 }
                 for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
-                    for(j = 0; j < Arena.numRowPlayers; j++){
+                    for(j = 0; j < arena.getNumRowPlayers(); j++){
                         if(targetTeamPlayers[i][j].maxHP == targetTeamPlayers[i][j].currentHP){
                             countFullHP++;
                             continue;
@@ -292,17 +293,16 @@ public class Player{
                     }
                 }
 
-                if(countFullHP == Arena.numRowPlayers * 2){
+                if(countFullHP == arena.getNumRowPlayers() * 2){
                     return null;
                 }
-                break;
+                return new PlayerPosition(minPositionI, minPositionJ);
             }
             case revive_teamLowestHP:{
                 targetTeamPlayers = arena.getFriendlyTeamPlayers(this);
-                double minValue;
 
                 for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
-                    for(j = 0; j < Arena.numRowPlayers; j++){
+                    for(j = 0; j < arena.getNumRowPlayers(); j++){
                         if(targetTeamPlayers[i][j].currentHP == 0){
                             countDead++;
                         }
@@ -315,7 +315,7 @@ public class Player{
                 PlayerPosition deadPlayerPositions[] = new PlayerPosition[countDead];
                 int countDeadPlayerArray = 0;
                 for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
-                    for(j = 0; j < Arena.numRowPlayers; j++){
+                    for(j = 0; j < arena.getNumRowPlayers(); j++){
                         if(targetTeamPlayers[i][j].currentHP == 0){
                             deadPlayerPositions[countDeadPlayerArray] = new PlayerPosition(i, j);
                             countDeadPlayerArray++;
@@ -324,15 +324,37 @@ public class Player{
                 }
 
                 PlayerPosition minPosition = null;
-                for(i = 0; i < countDead; i++){
-                    if(deadPlayerPositions[i].isLowerThan(deadPlayerPositions[i + 1]) && i < countDead - 1){
-                        minPosition = deadPlayerPositions[i];
+                if(countDead > 1){
+                    for(i = 0; i < countDead; i++){
+                        if(deadPlayerPositions[i].isLowerThan(deadPlayerPositions[i + 1]) && !(i > countDead - 1)){
+                            minPosition = deadPlayerPositions[i];
+                        }
                     }
+                }else{
+                    minPosition = deadPlayerPositions[0];
                 }
                 return minPosition;
             }
         }
-        return new PlayerPosition(minPositionI, minPositionJ);
+        return new PlayerPosition(-1, -1);
+    }
+
+    private PlayerPosition[] findMultipleTargetablePlayers(TargetingMode targetingMode){
+        int i, j, countAlive = 0;
+        Player[][] targetTeamPlayers = arena.getOpponentTeamPlayers(this);
+        PlayerPosition playerPosition[] = new PlayerPosition[arena.getNumRowPlayers() * Arena.NUMBER_OF_ROWS];
+
+        if(targetingMode == TargetingMode.selectAllTarget){
+            for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
+                for(j = 0; j < arena.getNumRowPlayers(); j++){
+                    if(targetTeamPlayers[i][j].isAlive()){
+                        playerPosition[countAlive] = new PlayerPosition(i, j);
+                        countAlive++;
+                    }
+                }
+            }
+        }
+        return playerPosition;
     }
 
     private void statusHandler(){
@@ -358,7 +380,10 @@ public class Player{
         }
     }
 
-    private void cleanBuffWhenDead(Player player){
+    private void cleanBuffWhenDie(Player player){
+
+        player.current_Turn_In_A_Row = 0;
+
         player.isSleeping = false;
         player.isTaunting = false;
 
@@ -379,6 +404,17 @@ public class Player{
         this.emptyInternalTurn();
         // Check if player has Status (Buff) and enforce the Turn rules.
         statusHandler();
+        if(this.isSleeping){
+            turnsSinceStartSleeping++;
+            if(turnsSinceStartSleeping != 2){
+                return;
+            }
+        }
+
+        if(turnsSinceStartSleeping != 0){
+            turnsSinceStartSleeping = 0;
+        }
+
         // INSERT YOUR CODE HERE
         if(current_Turn_In_A_Row == numSpecialTurns){
             useSpecialAbility(arena.getFriendlyTeamPlayers(this), arena.getOpponentTeamPlayers(this));
@@ -403,9 +439,11 @@ public class Player{
             }
             case Tank:{
                 taunt();
+                System.out.println(this.toString() + " taunting ");
                 break;
             }
             case Phoenix:{
+                revive(myTeam);
                 break;
             }
             case BlackMage:{
@@ -417,6 +455,7 @@ public class Player{
                 break;
             }
             case Cherry:{
+                fortuneCookies(theirTeam);
             }
         }
         current_Turn_In_A_Row = 0;
@@ -431,16 +470,15 @@ public class Player{
     }
 
     private void attack(Player[][] theirTeam){
-        //INSERT YOUR CODE HERE
         PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.attack_LowestHP);
-        assert targetPosition != null;
         Player target = theirTeam[targetPosition.getI()][targetPosition.getJ()];
 
         target.currentHP -= atk;
-        if(target.maxHP < 0){
-            target.maxHP = 0;
-            cleanBuffWhenDead(target);
+        if(target.currentHP < 0){
+            target.currentHP = 0;
+            cleanBuffWhenDie(target);
         }
+        System.out.println(this.toStringDebug() + " attacks " + target.toStringDebug());
     }
 
     private void doubleSlash(Player[][] theirTeam){
@@ -450,9 +488,9 @@ public class Player{
 
         for(int i = 1; i <= 2; i++){
             target.currentHP -= atk;
-            if(target.maxHP < 0){
-                target.maxHP = 0;
-                cleanBuffWhenDead(target);
+            if(target.currentHP < 0){
+                target.currentHP = 0;
+                cleanBuffWhenDie(target);
             }
         }
     }
@@ -471,6 +509,9 @@ public class Player{
     private void revive(Player[][] myTeam){
         PlayerPosition targetPlayerPosition = findTargetablePlayers(TargetingMode.revive_teamLowestHP);
         int i = targetPlayerPosition.getI(), j = targetPlayerPosition.getJ();
+        if(i == -1 && j == -1){
+            return;
+        }
         myTeam[i][j].currentHP += 0.3 * myTeam[i][j].maxHP;
     }
 
@@ -489,8 +530,18 @@ public class Player{
         theirTeam[i][j].cursedBy = Player.this;
     }
 
-    private void fortuneCookies(){
-
+    private void fortuneCookies(Player[][] theirTeam){
+        int i, j, countPlayerPosition = 0;
+        PlayerPosition[] playerPositions = findMultipleTargetablePlayers(TargetingMode.selectAllTarget);
+        for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
+            for(j = 0; j < arena.getNumRowPlayers(); j++){
+                if(playerPositions[countPlayerPosition].getI() == i
+                        && playerPositions[countPlayerPosition].getJ() == j && !theirTeam[i][j].isSleeping){
+                    theirTeam[i][j].turnsSinceStartSleeping = 0;
+                    theirTeam[i][j].isSleeping = true;
+                }
+            }
+        }
     }
 
     /**
@@ -510,7 +561,7 @@ public class Player{
     public Arena.Team getOpponentTeam(){
         if(this.getPlayerTeam() == Arena.Team.A){
             return Arena.Team.B;
-        }else if(this.getPlayerTeam() == Arena.Team.B){
+        }else{
             return Arena.Team.A;
         }
     }
@@ -521,6 +572,14 @@ public class Player{
     @Override
     public String toString(){
         return "[" + this.type.toString() + " HP:" + this.currentHP + "/" + this.maxHP + " ATK:" + this.atk + "]["
+                + ((this.isCursed()) ? "C" : "")
+                + ((this.isTaunting()) ? "T" : "")
+                + ((this.isSleeping()) ? "S" : "")
+                + "]";
+    }
+
+    public String toStringDebug(){
+        return "[" + this.playerPosition.toString() + " " + this.type.toString() + " HP:" + this.currentHP + "/" + this.maxHP + " ATK:" + this.atk + "]["
                 + ((this.isCursed()) ? "C" : "")
                 + ((this.isTaunting()) ? "T" : "")
                 + ((this.isSleeping()) ? "S" : "")

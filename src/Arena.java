@@ -31,7 +31,8 @@ public class Arena{
     public Arena(int _numRowPlayers){
         //INSERT YOUR CODE HERE
         numRowPlayers = _numRowPlayers;
-
+        teamA = new Player[NUMBER_OF_ROWS][_numRowPlayers];
+        teamB = new Player[NUMBER_OF_ROWS][_numRowPlayers];
 
         ////Keep this block of code. You need it for initialize the log file.
         ////(You will learn how to deal with files later)
@@ -42,6 +43,10 @@ public class Arena{
         }
         /////////////////////////////////////////
 
+    }
+
+    public int getNumRowPlayers(){
+        return numRowPlayers;
     }
 
     /**
@@ -76,18 +81,17 @@ public class Arena{
      * @param position is the position of the player in the row. Note that position starts from 1, 2, 3....
      */
     public void addPlayer(Team team, Player.PlayerType pType, Row row, int position){
-        //INSERT YOUR CODE HERE
         if(team == Team.A){
             if(row == Row.Front){
-                teamA[1][position - 1] = new Player(pType, team, this);
+                teamA[0][position - 1] = new Player(pType, team, this, new PlayerPosition(0, position - 1));
             }else if(row == Row.Back){
-                teamA[2][numRowPlayers + position - 1] = new Player(pType, team, this);
+                teamA[1][position - 1] = new Player(pType, team, this, new PlayerPosition(1, position - 1));
             }
         }else if(team == Team.B){
             if(row == Row.Front){
-                teamB[1][position - 1] = new Player(pType, team, this);
+                teamB[0][position - 1] = new Player(pType, team, this, new PlayerPosition(0, position - 1));
             }else if(row == Row.Back){
-                teamB[2][numRowPlayers + position - 1] = new Player(pType, team, this);
+                teamB[1][position - 1] = new Player(pType, team, this, new PlayerPosition(1, position - 1));
             }
         }
     }
@@ -106,10 +110,8 @@ public class Arena{
     public boolean validatePlayers(){
         //INSERT YOUR CODE HERE
         int i, j;
-
         int A_countMembers;
         int A_countHealer = 0, A_countTanks = 0, A_countSamurais = 0, A_countBlackMages = 0, A_countPhoenixes = 0, A_countCherry = 0;
-
         int B_countMembers;
         int B_countHealer = 0, B_countTanks = 0, B_countSamurais = 0, B_countBlackMages = 0, B_countPhoenixes = 0, B_countCherry = 0;
         for(i = 0; i < NUMBER_OF_ROWS; i++){
@@ -181,7 +183,7 @@ public class Arena{
      *
      * @return Total Current HP of all player in that team
      */
-    public static double getSumHP(Player[][] team){
+    private static double getSumHP(Player[][] team){
         int i, j;
         double sumHP = 0.0;
         for(i = 0; i < 2; i++){
@@ -203,10 +205,21 @@ public class Arena{
      * @return teamB
      */
     public Player[][] getWinningTeam(){
-        //INSERT YOUR CODE HERE
+
         int row, player;
         int A_countDead = 0;
         int B_countDead = 0;
+
+        if(numRounds == MAX_ROUNDS){
+            if(getSumHP(teamA) > getSumHP(teamB)){
+                return teamA;
+            }else if(getSumHP(teamA) < getSumHP(teamB)){
+                return teamB;
+            }else{
+                return null;
+            }
+        }
+
         for(row = 0; row < NUMBER_OF_ROWS; row++){
             for(player = 0; player < numRowPlayers; player++){
                 if(!teamA[row][player].isAlive()){
@@ -228,12 +241,10 @@ public class Arena{
             return teamA;
         }
 
-
         // If every players in TeamA and Team B died, the game is draw.
         if(A_countDead == NUMBER_OF_ROWS * numRowPlayers && B_countDead == NUMBER_OF_ROWS * numRowPlayers){
             return null;
         }
-
         return null;
     }
 
@@ -254,22 +265,39 @@ public class Arena{
         //INSERT YOUR CODE HERE
         int row, player;
         for(int round = 1; round <= MAX_ROUNDS; round++){
-
+            numRounds = round;
             for(row = 0; row < NUMBER_OF_ROWS; row++){
                 for(player = 0; player < numRowPlayers; player++){
                     teamA[row][player].takeAction(this);
-                    teamA[row][player].fillInternalTurn();
                 }
+            }
+
+            if(getWinningTeam() != null){
+                break;
             }
 
             for(row = 0; row < NUMBER_OF_ROWS; row++){
                 for(player = 0; player < numRowPlayers; player++){
                     teamB[row][player].takeAction(this);
-                    teamA[row][player].fillInternalTurn();
                 }
             }
-            numRounds = round;
+            System.out.println("Round: " + round);
+            Arena.displayArea(this, true);
+            logAfterEachRound();
+            if(getWinningTeam() != null){
+                break;
+            }
+        }
 
+        System.out.println("The Winning Team: " + identifyTeam(getWinningTeam()).name());
+
+    }
+
+    private Team identifyTeam(Player[][] team){
+        if(team == teamA){
+            return Team.A;
+        }else{
+            return Team.B;
         }
     }
 
@@ -286,15 +314,13 @@ public class Arena{
         if(verbose){
             str.append(String.format("%43s   %40s", "Team A", "") + "\t\t" + String.format("%-38s%-40s", "", "Team B") + "\n");
             str.append(String.format("%43s", "BACK ROW") + String.format("%43s", "FRONT ROW") + "  |  " + String.format("%-43s", "FRONT ROW") + "\t" + String.format("%-43s", "BACK ROW") + "\n");
-            for(int i = 0; i < numRowPlayers; i++){
+            for(int i = 0; i < Arena.numRowPlayers; i++){
                 str.append(String.format("%43s", arena.teamA[1][i]) + String.format("%43s", arena.teamA[0][i]) + "  |  " + String.format("%-43s", arena.teamB[0][i]) + String.format("%-43s", arena.teamB[1][i]) + "\n");
             }
         }
 
         str.append("@ Total HP of Team A = " + getSumHP(arena.teamA) + ". @ Total HP of Team B = " + getSumHP(arena.teamB) + "\n\n");
         System.out.print(str.toString());
-
-
     }
 
     /**
