@@ -2,9 +2,8 @@ public class Player{
 
     public enum TargetingMode{attack_LowestHP, heal_teamLowestHP, revive_teamLowestHP}
 
-
     private static Arena arena;
-    private Arena.Team team;
+    private Arena.Team team;    //
 
     private PlayerType type;    //Type of this player. Can be one of either Healer, Tank, Samurai, BlackMage, or Phoenix
 
@@ -26,17 +25,17 @@ public class Player{
      * Constructor of class Player, which initializes this player's type, maxHP, atk, numSpecialTurns,
      * as specified in the given table. It also reset the internal turn count of this player.
      *
-     * @param _type
+     * @param _type The type of Player Character
      */
-    public Player(PlayerType _type, Arena.Team team, Arena arena){
+    Player(PlayerType _type, Arena.Team team, Arena _arena){
         //INSERT YOUR CODE HERE
-        this.arena = arena;
+        arena = _arena;
         this.type = _type;
         this.team = team;
 
         this.isSleeping = false;
         this.isTaunting = false;
-        this.curser = null;
+        this.cursedBy = null;
         this.isCursed = false;
 
         internalTurn = 0;
@@ -94,18 +93,18 @@ public class Player{
     /**
      * Returns the current HP of this player
      *
-     * @return
+     * @return currentHP of this player
      */
-    public double getCurrentHP(){
+    private double getCurrentHP(){
         return currentHP;
     }
 
     /**
      * Returns type of this player
      *
-     * @return
+     * @return type or class of this player
      */
-    public Player.PlayerType getType(){
+    Player.PlayerType getType(){
         //INSERT YOUR CODE HERE
         return null;
     }
@@ -113,7 +112,7 @@ public class Player{
     /**
      * Returns max HP of this player.
      *
-     * @return
+     * @return maxHP of this player
      */
     public double getMaxHP(){
         //INSERT YOUR CODE HERE
@@ -124,20 +123,26 @@ public class Player{
         return internalTurn;
     }
 
-    public void emptyInternalTurn(){
+    /**
+     * Set internalTurn of this player to 0, it has to be used before This player takeAction()
+     */
+    private void emptyInternalTurn(){
         this.internalTurn = 0;
     }
 
-    public void fillInternalTurn(){
+    /**
+     * Set internalTurn of this player to 1, it has to be used after This player takeAction()
+     */
+    void fillInternalTurn(){
         this.internalTurn = 1;
     }
 
     /**
      * Returns whether this player is sleeping.
      *
-     * @return
+     * @return whether this player is sleeping.
      */
-    public boolean isSleeping(){
+    private boolean isSleeping(){
         //INSERT YOUR CODE HERE
         return isSleeping;
     }
@@ -145,9 +150,9 @@ public class Player{
     /**
      * Returns whether this player is being cursed.
      *
-     * @return
+     * @return whether this player get cursed debuff or not
      */
-    public boolean isCursed(){
+    private boolean isCursed(){
         //INSERT YOUR CODE HERE
 
         return isCursed;
@@ -156,32 +161,42 @@ public class Player{
     /**
      * Returns whether this player is alive (i.e. current HP > 0).
      *
-     * @return
+     * @return whether this player is alive
      */
-    public boolean isAlive(){
+    boolean isAlive(){
         return currentHP > 0;
     }
 
     /**
      * Returns whether this player is taunting the other team.
      *
-     * @return
+     * @return whether this player is taunting or not
      */
-    public boolean isTaunting(){
+    private boolean isTaunting(){
         //INSERT YOUR CODE HERE
         return isTaunting;
     }
 
-
-
-    private static PlayerPosition findTargetablePlayers(TargetingMode targetingMode){
+    /**
+     * This method will select an Algorithm for each action that is the most suitable
+     * 1. Attacking and Cursing - Find A player with the LOWEST HP PERCENTAGE on the FRONT ROW
+     * ** Taunting - If there are multiple taunting player, the first taunting player according to
+     * the position order gets attacked first.**
+     * 2. Healing - Find an ALLY with the LOWEST HP PERCENTAGE
+     * 3. Find a dead Ally in the first according to the position
+     *
+     * @param targetingMode The mode to get Target based on the player action
+     *
+     * @return Target player position
+     */
+    private PlayerPosition findTargetablePlayers(TargetingMode targetingMode){
         //TODO: write a fucking code to select target properly!
 
         int i, j;
         int countFullHP = 0;
         Player[][] targetTeamPlayers;
 
-        int MinPositionI = Arena.numRowPlayers, MinPositionJ = Arena.numRowPlayers;
+        int MinPositionI = arena.numRowPlayers, MinPositionJ = arena.numRowPlayers;
 
         switch(targetingMode){
             case attack_LowestHP:{
@@ -195,7 +210,7 @@ public class Player{
                 }
 
                 PlayerPosition playerPosition[] = new PlayerPosition[Arena.MAX_EACH_TYPE];
-                for(i = 0; i < Arena.NUMBER_OF_ROWS - 1; i++){
+                for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
                     for(j = 0; j < Arena.numRowPlayers; j++){
                         if(targetTeamPlayers[i][j].isTaunting){
                             playerPosition[countTaunt] = new PlayerPosition(i, j);
@@ -206,7 +221,7 @@ public class Player{
 
                 int rowRange;
                 if(countTaunt > 0){
-                    rowRange = Arena.NUMBER_OF_ROWS - 1;
+                    rowRange = Arena.NUMBER_OF_ROWS;
                 }else{
                     rowRange = Arena.getFrontRow(targetTeamPlayers);
                 }
@@ -249,14 +264,14 @@ public class Player{
                 break;
             }
             case heal_teamLowestHP:{
-                targetTeamPlayers = Arena.getFriendlyTeamPlayers(this);
+                targetTeamPlayers = arena.getFriendlyTeamPlayers(this);
                 double minValue;
                 if(targetTeamPlayers != null){
                     minValue = targetTeamPlayers[0][0].currentHP / targetTeamPlayers[0][0].maxHP;
                 }else{
                     return null;
                 }
-                for(i = 0; i < 2; i++){
+                for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
                     for(j = 0; j < Arena.numRowPlayers; j++){
                         if(targetTeamPlayers[i][j].maxHP == targetTeamPlayers[i][j].currentHP){
                             countFullHP++;
@@ -288,15 +303,18 @@ public class Player{
     }
 
     private void statusHandler(){
+        // If the Player is taunting, remove the buff.
         if(this.isTaunting){
             isTaunting = false;
         }
 
         // If THE CURSER has a CURSE TARGET and THE CURSER has internalTurn = 0, The CURSED TARGET will no longer CURSED.
         if(this.iAmCursing != null){
-            if(internalTurn == 0){
-                iAmCursing.isCursed = false;
-            }
+            iAmCursing.isCursed = false;
+        }
+
+        if(this.isSleeping){
+            isSleeping = false;
         }
     }
 
@@ -308,10 +326,11 @@ public class Player{
      *
      * @param arena the current arena
      */
-    public void takeAction(Arena arena){
+    void takeAction(Arena arena){
         this.emptyInternalTurn();
+        // Check if player has Status (Buff) and enforce the Turn rules.
         statusHandler();
-        //INSERT YOUR CODE HERE
+        // INSERT YOUR CODE HERE
         if(current_Turn_In_A_Row == numSpecialTurns){
             useSpecialAbility(arena.getFriendlyTeamPlayers(this), arena.getOpponentTeamPlayers(this));
         }else{
@@ -321,6 +340,12 @@ public class Player{
         current_Turn_In_A_Row++;
     }
 
+    /**
+     * This method will choose an ability based on Player Type
+     *
+     * @param myTeam    the array of friendly team
+     * @param theirTeam the array of opponent team
+     */
     private void useSpecialAbility(Player[][] myTeam, Player[][] theirTeam){
         //INSERT YOUR CODE HERE
         switch(type){
@@ -349,13 +374,18 @@ public class Player{
         current_Turn_In_A_Row = 0;
     }
 
+    /**
+     * Make the players of the opposite team attack (including double-slashing and cursing) himself
+     * for one internal turn.
+     */
     private void taunt(){
         isTaunting = true;
     }
 
-    void attack(Player[][] theirTeam){
+    private void attack(Player[][] theirTeam){
         //INSERT YOUR CODE HERE
         PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.attack_LowestHP);
+        assert targetPosition != null;
         Player target = theirTeam[targetPosition.getI()][targetPosition.getJ()];
 
         target.currentHP -= atk;
@@ -366,6 +396,7 @@ public class Player{
 
     private void doubleSlash(Player[][] theirTeam){
         PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.attack_LowestHP);
+        assert targetPosition != null;
         Player target = theirTeam[targetPosition.getI()][targetPosition.getJ()];
 
         for(int i = 1; i <= 2; i++){
@@ -378,6 +409,7 @@ public class Player{
 
     private void heal(Player[][] myTeam){
         PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.heal_teamLowestHP);
+        assert targetPosition != null;
         int i = targetPosition.getI(), j = targetPosition.getI();
 
         myTeam[i][j].currentHP += (0.3 * myTeam[i][j].maxHP);
@@ -386,7 +418,7 @@ public class Player{
         }
     }
 
-    void curse(Player[][] theirTeam){
+    private void curse(Player[][] theirTeam){
         PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.attack_LowestHP);
         assert targetPosition != null;
         int i = targetPosition.getI(), j = targetPosition.getI();
@@ -398,7 +430,7 @@ public class Player{
         theirTeam[i][j].isCursed = true;
 
         // The Curse Target will remember their curser.
-        theirTeam[i][j].curser = Player.this;
+        theirTeam[i][j].cursedBy = Player.this;
     }
 
     private void fortuneCookies(){
@@ -409,12 +441,17 @@ public class Player{
     /**
      * This method returns the faction of this player.
      *
-     * @return team
+     * @return current team of this player
      */
-    public Arena.Team getPlayerTeam(){
+    Arena.Team getPlayerTeam(){
         return team;
     }
 
+    /**
+     * This method returns the opponent team of this player.
+     *
+     * @return opponent team of this player
+     */
     public Arena.Team getOpponentTeam(){
         if(this.getPlayerTeam() == Arena.Team.A){
             return Arena.Team.B;

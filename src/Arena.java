@@ -13,12 +13,12 @@ public class Arena{
 
     public static final int NUMBER_OF_ROWS = 2;
     public static int numRowPlayers;
-
-    private static Player[][] teamA = null;    //two dimensional array representing the players of Team A
-    private static Player[][] teamB = null;    //two dimensional array representing the players of Team B
-
     public static final int MAX_ROUNDS = 100;    //Max number of turn
     public static final int MAX_EACH_TYPE = 3;    //Max number of players of each type, in each team.
+
+    private Player[][] teamA = null;    //two dimensional array representing the players of Team A
+    private Player[][] teamB = null;    //two dimensional array representing the players of Team B
+
     private final Path logFile = Paths.get("battle_log.txt");
 
     private int numRounds = 0;    //keep track of the number of rounds so far
@@ -48,15 +48,23 @@ public class Arena{
      * Returns true if "player" is a member of "team", false otherwise.
      * Assumption: team can be either Team.A or Team.B
      *
-     * @param player
-     * @param team
-     * @return
+     * @param player check if the player is in given team
+     * @param team   target team that you want to check with
+     *
+     * @return whether the player is in that team or not
      */
     public boolean isMemberOf(Player player, Team team){
         //INSERT YOUR CODE HERE
         return player.getPlayerTeam() == team;
     }
 
+    public Player[][] getTeamA(){
+        return teamA;
+    }
+
+    public Player[][] getTeamB(){
+        return teamB;
+    }
 
     /**
      * This methods receives a player configuration (i.e., team, type, row, and position),
@@ -68,9 +76,6 @@ public class Arena{
      * @param position is the position of the player in the row. Note that position starts from 1, 2, 3....
      */
     public void addPlayer(Team team, Player.PlayerType pType, Row row, int position){
-
-
-
         //INSERT YOUR CODE HERE
         if(team == Team.A){
             if(row == Row.Front){
@@ -87,7 +92,6 @@ public class Arena{
         }
     }
 
-
     /**
      * Validate the players in both Team A and B. Returns true if all of the following conditions hold:
      * <p>
@@ -97,7 +101,7 @@ public class Arena{
      * <p>
      * Returns true if all the conditions above are satisfied, false otherwise.
      *
-     * @return
+     * @return whether all player of both team meet the requirement
      */
     public boolean validatePlayers(){
         //INSERT YOUR CODE HERE
@@ -108,7 +112,7 @@ public class Arena{
 
         int B_countMembers;
         int B_countHealer = 0, B_countTanks = 0, B_countSamurais = 0, B_countBlackMages = 0, B_countPhoenixes = 0, B_countCherry = 0;
-        for(i = 0; i < 2; i++){
+        for(i = 0; i < NUMBER_OF_ROWS; i++){
             for(j = 0; j < numRowPlayers; j++){
                 switch(teamA[i][j].getType()){
                     case Healer:
@@ -173,8 +177,9 @@ public class Arena{
     /**
      * Returns the sum of HP of all the players in the given "team"
      *
-     * @param team
-     * @return
+     * @param team that you need the sum of.
+     *
+     * @return Total Current HP of all player in that team
      */
     public static double getSumHP(Player[][] team){
         int i, j;
@@ -307,7 +312,8 @@ public class Arena{
      */
     private void logAfterEachRound(){
         try{
-            Files.write(logFile, Arrays.asList(new String[]{numRounds + "\t" + getSumHP(teamA) + "\t" + getSumHP(teamB)}), StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+            Files.write(logFile, Arrays.asList(new String[]{
+                    numRounds + "\t" + getSumHP(teamA) + "\t" + getSumHP(teamB)}), StandardOpenOption.APPEND, StandardOpenOption.CREATE);
         }catch(IOException e){
             e.printStackTrace();
         }
