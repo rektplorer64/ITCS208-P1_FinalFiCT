@@ -14,6 +14,11 @@ public class PlayerPosition{
         this.j = j;
     }
 
+    public PlayerPosition(){
+        this.i = 0;
+        this.j = 0;
+    }
+
     /**
      * @return Get the Row that player is in
      */

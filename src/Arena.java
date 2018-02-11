@@ -225,11 +225,14 @@ public class Arena{
                 if(!teamA[row][player].isAlive()){
                     A_countDead++;
                 }
-                if(!teamA[row][player].isAlive()){
+                if(!teamB[row][player].isAlive()){
                     B_countDead++;
                 }
             }
         }
+
+        //System.out.println("A_countDead = " + A_countDead);
+        //System.out.println("B_countDead = " + B_countDead);
 
         // If every players in Team A died, Team B wins.
         if(A_countDead == NUMBER_OF_ROWS * numRowPlayers){
@@ -268,6 +271,9 @@ public class Arena{
             numRounds = round;
             for(row = 0; row < NUMBER_OF_ROWS; row++){
                 for(player = 0; player < numRowPlayers; player++){
+                    if(!teamA[row][player].isAlive()){
+                        continue;
+                    }
                     teamA[row][player].takeAction(this);
                 }
             }
@@ -278,6 +284,9 @@ public class Arena{
 
             for(row = 0; row < NUMBER_OF_ROWS; row++){
                 for(player = 0; player < numRowPlayers; player++){
+                    if(!teamB[row][player].isAlive()){
+                        continue;
+                    }
                     teamB[row][player].takeAction(this);
                 }
             }
