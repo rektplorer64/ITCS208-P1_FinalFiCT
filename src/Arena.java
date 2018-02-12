@@ -226,6 +226,11 @@ public class Arena{
         int row, player;
         for(int round = 1; round <= MAX_ROUNDS; round++){
             numRounds = round;
+
+            if(StudentTester.debug_ActionMessages){
+                System.out.println("@ Round " + round);
+            }
+
             for(row = 0; row < NUMBER_OF_ROWS; row++){
                 for(player = 0; player < numRowPlayers; player++){
                     if(!teamA[row][player].isAlive()){
@@ -233,10 +238,6 @@ public class Arena{
                     }
                     teamA[row][player].takeAction(this);
                 }
-            }
-
-            if(getWinningTeam() != null){
-                break;
             }
 
             for(row = 0; row < NUMBER_OF_ROWS; row++){
@@ -247,7 +248,7 @@ public class Arena{
                     teamB[row][player].takeAction(this);
                 }
             }
-            System.out.println("Round: " + round);
+
             Arena.displayArea(this, true);
             logAfterEachRound();
             if(getWinningTeam() != null){
@@ -365,6 +366,14 @@ public class Arena{
             return Team.A;
         }else{
             return Team.B;
+        }
+    }
+
+    public static String team_toString(Team team){
+        if(team == Team.A){
+            return "Team A";
+        }else{
+            return "Team B";
         }
     }
 

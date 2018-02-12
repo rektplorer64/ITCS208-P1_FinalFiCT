@@ -72,8 +72,23 @@ public class PlayerPosition{
         }
     }
 
+    /**
+     * Process current i j to a string
+     *
+     * @return order pair of i and j
+     */
     @Override
     public String toString(){
         return "(" + getI() + ", " + getJ() + ")";
+    }
+
+    public String toReadableString(){
+        String row;
+        if(getI() == 0){
+            row = "Front";
+        }else{
+            row = "Back";
+        }
+        return "[" + row + "][" + (getJ() + 1) + "]";
     }
 }
