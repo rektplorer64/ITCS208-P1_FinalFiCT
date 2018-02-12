@@ -3,6 +3,11 @@ public class PlayerPosition{
     private int i;
     private int j;
 
+    public PlayerPosition(){
+        this.i = 0;
+        this.j = 0;
+    }
+
     /**
      * The Constructor for PlayerPosition
      *
@@ -14,16 +19,18 @@ public class PlayerPosition{
         this.j = j;
     }
 
-    public PlayerPosition(){
-        this.i = 0;
-        this.j = 0;
-    }
-
     /**
      * @return Get the Row that player is in
      */
     public int getI(){
         return i;
+    }
+
+    /**
+     * @return Get the Position that player is in
+     */
+    public int getJ(){
+        return j;
     }
 
     /**
@@ -33,13 +40,6 @@ public class PlayerPosition{
      */
     public void setI(int i){
         this.i = i;
-    }
-
-    /**
-     * @return Get the Position that player is in
-     */
-    public int getJ(){
-        return j;
     }
 
     /**

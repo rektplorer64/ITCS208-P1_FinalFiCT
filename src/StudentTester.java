@@ -110,18 +110,18 @@ public class StudentTester {
 
         //////////////////// CONFIGURE YOUR TEAM HERE ////////////////////////////////////
         //Add players to the front row of Team A
-		/*battleField.addPlayer(Arena.Team.A, Player.PlayerType.???, Arena.Row.Front, 1);
-		battleField.addPlayer(Arena.Team.A, Player.PlayerType.???, Arena.Row.Front, 2);
-		battleField.addPlayer(Arena.Team.A, Player.PlayerType.???, Arena.Row.Front, 3);
-		battleField.addPlayer(Arena.Team.A, Player.PlayerType.???, Arena.Row.Front, 4);
-		battleField.addPlayer(Arena.Team.A, Player.PlayerType.???, Arena.Row.Front, 5);
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Tank, Arena.Row.Front, 1);
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Samurai, Arena.Row.Front, 2);
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Tank, Arena.Row.Front, 3);
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Samurai, Arena.Row.Front, 4);
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Tank, Arena.Row.Front, 5);
 
 		//Add players to the Back row of Team A
-		battleField.addPlayer(Arena.Team.A, Player.PlayerType.???, Arena.Row.Back, 1);
-		battleField.addPlayer(Arena.Team.A, Player.PlayerType.???, Arena.Row.Back, 2);
-		battleField.addPlayer(Arena.Team.A, Player.PlayerType.???, Arena.Row.Back, 3);
-		battleField.addPlayer(Arena.Team.A, Player.PlayerType.???, Arena.Row.Back, 4);
-		battleField.addPlayer(Arena.Team.A, Player.PlayerType.???, Arena.Row.Back, 5);*/
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Samurai, Arena.Row.Back, 1);
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Phoenix, Arena.Row.Back, 2);
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Healer, Arena.Row.Back, 3);
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Cherry, Arena.Row.Back, 4);
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Healer, Arena.Row.Back, 5);
         //////////////////////////////////////////////////////////////////////////////////
 
 
@@ -173,13 +173,13 @@ public class StudentTester {
     public static void main(String[] args)
     {
         /// Your test cases
-        simpleCase();
+        //simpleCase();
         //advancedCase();
 
 
 
         ////// BONUS CREDIT: Beat Our Team /////
-        //bonusCredit();
+        bonusCredit();
 
 
     }

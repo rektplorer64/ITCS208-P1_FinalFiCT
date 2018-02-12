@@ -71,6 +71,118 @@ public class Arena{
         return teamB;
     }
 
+    public Player[][] getOpponentTeamPlayers(Player player){
+        if(player.getPlayerTeam() == Team.A){
+            return teamB;
+        }else if(player.getPlayerTeam() == Team.B){
+            return teamA;
+        }
+        return null;
+    }
+
+    public Player[][] getFriendlyTeamPlayers(Player player){
+        if(player.getPlayerTeam() == Team.A){
+            return teamA;
+        }else if(player.getPlayerTeam() == Team.B){
+            return teamB;
+        }
+        return null;
+    }
+
+    public int getFrontRow(Player[][] teamPlayers){
+        int i, j;
+        int firstRowCountAlive = 0;
+        for(i = 0; i < 1; i++){
+            for(j = 0; j < Arena.numRowPlayers; j++){
+                if(teamPlayers[0][j].isAlive()){
+                    firstRowCountAlive++;
+                }
+            }
+        }
+
+        if(firstRowCountAlive > 0){
+            return 0;
+        }else{
+            return 1;
+        }
+    }
+
+    /**
+     * Return the team (either teamA or teamB) whose number of alive players is higher than the other.
+     * <p>
+     * If the two teams have an equal number of alive players, then the team whose sum of HP of all the
+     * players is higher is returned.
+     * <p>
+     * If the sums of HP of all the players of both teams are equal, return teamA.
+     *
+     * @return teamB
+     */
+    public Player[][] getWinningTeam(){
+
+        int row, player;
+        int A_countDead = 0;
+        int B_countDead = 0;
+
+        if(numRounds == MAX_ROUNDS){
+            if(getSumHP(teamA) > getSumHP(teamB)){
+                return teamA;
+            }else if(getSumHP(teamA) < getSumHP(teamB)){
+                return teamB;
+            }else{
+                return null;
+            }
+        }
+
+        for(row = 0; row < NUMBER_OF_ROWS; row++){
+            for(player = 0; player < numRowPlayers; player++){
+                if(!teamA[row][player].isAlive()){
+                    A_countDead++;
+                }
+                if(!teamB[row][player].isAlive()){
+                    B_countDead++;
+                }
+            }
+        }
+
+        //System.out.println("A_countDead = " + A_countDead);
+        //System.out.println("B_countDead = " + B_countDead);
+
+        // If every players in Team A died, Team B wins.
+        if(A_countDead == NUMBER_OF_ROWS * numRowPlayers){
+            return teamB;
+        }
+
+        // If every players in Team B died, Team A wins.
+        if(B_countDead == NUMBER_OF_ROWS * numRowPlayers){
+            return teamA;
+        }
+
+        // If every players in TeamA and Team B died, the game is draw.
+        if(A_countDead == NUMBER_OF_ROWS * numRowPlayers && B_countDead == NUMBER_OF_ROWS * numRowPlayers){
+            return null;
+        }
+        return null;
+    }
+
+
+    /**
+     * Returns the sum of HP of all the players in the given "team"
+     *
+     * @param team that you need the sum of.
+     *
+     * @return Total Current HP of all player in that team
+     */
+    public static double getSumHP(Player[][] team){
+        int i, j;
+        double sumHP = 0.0;
+        for(i = 0; i < 2; i++){
+            for(j = 0; j < numRowPlayers; j++){
+                sumHP += team[i][j].getCurrentHP();
+            }
+        }
+        return sumHP;
+    }
+
     /**
      * This methods receives a player configuration (i.e., team, type, row, and position),
      * creates a new player instance, and places him at the specified position.
@@ -94,6 +206,57 @@ public class Arena{
                 teamB[1][position - 1] = new Player(pType, team, this, new PlayerPosition(1, position - 1));
             }
         }
+    }
+
+    /**
+     * This method simulates the battle between teamA and teamB. The method should have a loop that signifies
+     * a round of the battle. In each round, each player in teamA invokes the method takeAction(). The players'
+     * turns are ordered by its position in the team. Once all the players in teamA have invoked takeAction(),
+     * not it is teamB's turn to do the same.
+     * <p>
+     * The battle terminates if one of the following two conditions is met:
+     * <p>
+     * 1. All the players in a team has been eliminated.
+     * 2. The number of rounds exceeds MAX_ROUNDS
+     * <p>
+     * After the battle terminates, report the winning team, which is determined by getWinningTeam().
+     */
+    public void startBattle(){
+        //INSERT YOUR CODE HERE
+        int row, player;
+        for(int round = 1; round <= MAX_ROUNDS; round++){
+            numRounds = round;
+            for(row = 0; row < NUMBER_OF_ROWS; row++){
+                for(player = 0; player < numRowPlayers; player++){
+                    if(!teamA[row][player].isAlive()){
+                        continue;
+                    }
+                    teamA[row][player].takeAction(this);
+                }
+            }
+
+            if(getWinningTeam() != null){
+                break;
+            }
+
+            for(row = 0; row < NUMBER_OF_ROWS; row++){
+                for(player = 0; player < numRowPlayers; player++){
+                    if(!teamB[row][player].isAlive()){
+                        continue;
+                    }
+                    teamB[row][player].takeAction(this);
+                }
+            }
+            System.out.println("Round: " + round);
+            Arena.displayArea(this, true);
+            logAfterEachRound();
+            if(getWinningTeam() != null){
+                break;
+            }
+        }
+
+        System.out.println("The Winning Team: " + identifyTeam(getWinningTeam()).name());
+
     }
 
     /**
@@ -175,141 +338,6 @@ public class Arena{
         return true;
     }
 
-
-    /**
-     * Returns the sum of HP of all the players in the given "team"
-     *
-     * @param team that you need the sum of.
-     *
-     * @return Total Current HP of all player in that team
-     */
-    private static double getSumHP(Player[][] team){
-        int i, j;
-        double sumHP = 0.0;
-        for(i = 0; i < 2; i++){
-            for(j = 0; j < numRowPlayers; j++){
-                sumHP += team[i][j].getCurrentHP();
-            }
-        }
-        return sumHP;
-    }
-
-    /**
-     * Return the team (either teamA or teamB) whose number of alive players is higher than the other.
-     * <p>
-     * If the two teams have an equal number of alive players, then the team whose sum of HP of all the
-     * players is higher is returned.
-     * <p>
-     * If the sums of HP of all the players of both teams are equal, return teamA.
-     *
-     * @return teamB
-     */
-    public Player[][] getWinningTeam(){
-
-        int row, player;
-        int A_countDead = 0;
-        int B_countDead = 0;
-
-        if(numRounds == MAX_ROUNDS){
-            if(getSumHP(teamA) > getSumHP(teamB)){
-                return teamA;
-            }else if(getSumHP(teamA) < getSumHP(teamB)){
-                return teamB;
-            }else{
-                return null;
-            }
-        }
-
-        for(row = 0; row < NUMBER_OF_ROWS; row++){
-            for(player = 0; player < numRowPlayers; player++){
-                if(!teamA[row][player].isAlive()){
-                    A_countDead++;
-                }
-                if(!teamB[row][player].isAlive()){
-                    B_countDead++;
-                }
-            }
-        }
-
-        //System.out.println("A_countDead = " + A_countDead);
-        //System.out.println("B_countDead = " + B_countDead);
-
-        // If every players in Team A died, Team B wins.
-        if(A_countDead == NUMBER_OF_ROWS * numRowPlayers){
-            return teamB;
-        }
-
-        // If every players in Team B died, Team A wins.
-        if(B_countDead == NUMBER_OF_ROWS * numRowPlayers){
-            return teamA;
-        }
-
-        // If every players in TeamA and Team B died, the game is draw.
-        if(A_countDead == NUMBER_OF_ROWS * numRowPlayers && B_countDead == NUMBER_OF_ROWS * numRowPlayers){
-            return null;
-        }
-        return null;
-    }
-
-    /**
-     * This method simulates the battle between teamA and teamB. The method should have a loop that signifies
-     * a round of the battle. In each round, each player in teamA invokes the method takeAction(). The players'
-     * turns are ordered by its position in the team. Once all the players in teamA have invoked takeAction(),
-     * not it is teamB's turn to do the same.
-     * <p>
-     * The battle terminates if one of the following two conditions is met:
-     * <p>
-     * 1. All the players in a team has been eliminated.
-     * 2. The number of rounds exceeds MAX_ROUNDS
-     * <p>
-     * After the battle terminates, report the winning team, which is determined by getWinningTeam().
-     */
-    public void startBattle(){
-        //INSERT YOUR CODE HERE
-        int row, player;
-        for(int round = 1; round <= MAX_ROUNDS; round++){
-            numRounds = round;
-            for(row = 0; row < NUMBER_OF_ROWS; row++){
-                for(player = 0; player < numRowPlayers; player++){
-                    if(!teamA[row][player].isAlive()){
-                        continue;
-                    }
-                    teamA[row][player].takeAction(this);
-                }
-            }
-
-            if(getWinningTeam() != null){
-                break;
-            }
-
-            for(row = 0; row < NUMBER_OF_ROWS; row++){
-                for(player = 0; player < numRowPlayers; player++){
-                    if(!teamB[row][player].isAlive()){
-                        continue;
-                    }
-                    teamB[row][player].takeAction(this);
-                }
-            }
-            System.out.println("Round: " + round);
-            Arena.displayArea(this, true);
-            logAfterEachRound();
-            if(getWinningTeam() != null){
-                break;
-            }
-        }
-
-        System.out.println("The Winning Team: " + identifyTeam(getWinningTeam()).name());
-
-    }
-
-    private Team identifyTeam(Player[][] team){
-        if(team == teamA){
-            return Team.A;
-        }else{
-            return Team.B;
-        }
-    }
-
     /**
      * This method displays the current area state, and is already implemented for you.
      * In startBattle(), you should call this method once before the battle starts, and
@@ -330,6 +358,14 @@ public class Arena{
 
         str.append("@ Total HP of Team A = " + getSumHP(arena.teamA) + ". @ Total HP of Team B = " + getSumHP(arena.teamB) + "\n\n");
         System.out.print(str.toString());
+    }
+
+    private Team identifyTeam(Player[][] team){
+        if(team == teamA){
+            return Team.A;
+        }else{
+            return Team.B;
+        }
     }
 
     /**
@@ -353,41 +389,5 @@ public class Arena{
             e.printStackTrace();
         }
 
-    }
-
-    public Player[][] getOpponentTeamPlayers(Player player){
-        if(player.getPlayerTeam() == Team.A){
-            return teamB;
-        }else if(player.getPlayerTeam() == Team.B){
-            return teamA;
-        }
-        return null;
-    }
-
-    public Player[][] getFriendlyTeamPlayers(Player player){
-        if(player.getPlayerTeam() == Team.A){
-            return teamA;
-        }else if(player.getPlayerTeam() == Team.B){
-            return teamB;
-        }
-        return null;
-    }
-
-    public int getFrontRow(Player[][] teamPlayers){
-        int i, j;
-        int firstRowCountAlive = 0;
-        for(i = 0; i < 1; i++){
-            for(j = 0; j < Arena.numRowPlayers; j++){
-                if(teamPlayers[0][j].isAlive()){
-                    firstRowCountAlive++;
-                }
-            }
-        }
-
-        if(firstRowCountAlive > 0){
-            return 0;
-        }else{
-            return 1;
-        }
     }
 }
