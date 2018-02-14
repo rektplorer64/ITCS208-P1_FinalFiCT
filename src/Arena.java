@@ -7,6 +7,11 @@ import java.util.Arrays;
 
 public class Arena{
 
+    public static final int NUMBER_OF_ROWS = 2;     //Number of Rows, as stated in the rules
+    private static final int MAX_ROUNDS = 100;    //Max number of turn
+    private static final int MAX_EACH_TYPE = 3;    //Max number of players of each type, in each team.
+    private static int numRowPlayers;
+
     /**
      * Returns String name of Team.
      * Called by Debugging methods.
@@ -23,7 +28,67 @@ public class Arena{
         }
     }
 
-    ;    //enum for specifying the front or back row
+    /**
+     * This methods receives a player configuration (i.e., team, type, row, and position),
+     * creates a new player instance, and places him at the specified position.
+     *
+     * @param team     is either Team.A or Team.B
+     * @param pType    is one of the Player.Type  {Healer, Tank, Samurai, BlackMage, Phoenix}
+     * @param row      either Row.Front or Row.Back
+     * @param position is the position of the player in the row. Note that position starts from 1, 2, 3....
+     */
+    public void addPlayer(Team team, Player.PlayerType pType, Row row, int position){
+        if(team == Team.A){
+            if(row == Row.Front){
+                teamA[0][position - 1] = new Player(pType, team, this, new PlayerPosition(0, position - 1));
+            }else if(row == Row.Back){
+                teamA[1][position - 1] = new Player(pType, team, this, new PlayerPosition(1, position - 1));
+            }
+        }else if(team == Team.B){
+            if(row == Row.Front){
+                teamB[0][position - 1] = new Player(pType, team, this, new PlayerPosition(0, position - 1));
+            }else if(row == Row.Back){
+                teamB[1][position - 1] = new Player(pType, team, this, new PlayerPosition(1, position - 1));
+            }
+        }
+    }
+
+    private Player[][] teamA = null;    //two dimensional array representing the players of Team A
+    private Player[][] teamB = null;    //two dimensional array representing the players of Team B
+
+    private final Path logFile = Paths.get("battle_log.txt");
+
+    private int numRounds = 0;    //keep track of the number of rounds so far
+
+    /**
+     * Constructor.
+     *
+     * @param _numRowPlayers is the number of player in each row.
+     */
+    public Arena(int _numRowPlayers){
+        numRowPlayers = _numRowPlayers;
+        teamA = new Player[NUMBER_OF_ROWS][_numRowPlayers];
+        teamB = new Player[NUMBER_OF_ROWS][_numRowPlayers];
+
+        ////Keep this block of code. You need it for initialize the log file.
+        ////(You will learn how to deal with files later)
+        try{
+            Files.deleteIfExists(logFile);
+        }catch(IOException e){
+            e.printStackTrace();
+        }
+        /////////////////////////////////////////
+
+    }
+
+    /**
+     * Returns number of player in each row
+     *
+     * @return Number of player in each row
+     */
+    public int getNumRowPlayers(){
+        return numRowPlayers;
+    }
 
     /**
      * This method will give the current Front Row of a team
@@ -52,44 +117,44 @@ public class Arena{
         }
     }
 
-    ;        //enum for specifying team A or B
-
-    public static final int NUMBER_OF_ROWS = 2;
-    public static int numRowPlayers;
-    public static final int MAX_ROUNDS = 100;    //Max number of turn
-    public static final int MAX_EACH_TYPE = 3;    //Max number of players of each type, in each team.
-
-    private Player[][] teamA = null;    //two dimensional array representing the players of Team A
-    private Player[][] teamB = null;    //two dimensional array representing the players of Team B
-
-    private final Path logFile = Paths.get("battle_log.txt");
-
-    private int numRounds = 0;    //keep track of the number of rounds so far
-
     /**
-     * Constructor.
+     * Return the team (either teamA or teamB) which is opponent to the player.
      *
-     * @param _numRowPlayers is the number of player in each row.
+     * @param player target player that you want to check
+     *
+     * @return whether team A or team B
      */
-    public Arena(int _numRowPlayers){
-        //INSERT YOUR CODE HERE
-        numRowPlayers = _numRowPlayers;
-        teamA = new Player[NUMBER_OF_ROWS][_numRowPlayers];
-        teamB = new Player[NUMBER_OF_ROWS][_numRowPlayers];
-
-        ////Keep this block of code. You need it for initialize the log file.
-        ////(You will learn how to deal with files later)
-        try{
-            Files.deleteIfExists(logFile);
-        }catch(IOException e){
-            e.printStackTrace();
+    public Player[][] getOpponentTeamPlayers(Player player){
+        if(player.getPlayerTeam() == Team.A){
+            return teamB;
+        }else if(player.getPlayerTeam() == Team.B){
+            return teamA;
         }
-        /////////////////////////////////////////
-
+        return null;
     }
 
-    public int getNumRowPlayers(){
-        return numRowPlayers;
+    public Player[][] getTeamA(){
+        return teamA;
+    }
+
+    public Player[][] getTeamB(){
+        return teamB;
+    }
+
+    /**
+     * Return the team (either teamA or teamB) which player joined in.
+     *
+     * @param player target player that you want to check
+     *
+     * @return whether team A or team B
+     */
+    public Player[][] getFriendlyTeamPlayers(Player player){
+        if(player.getPlayerTeam() == Team.A){
+            return teamA;
+        }else if(player.getPlayerTeam() == Team.B){
+            return teamB;
+        }
+        return null;
     }
 
     /**
@@ -104,32 +169,6 @@ public class Arena{
     public boolean isMemberOf(Player player, Team team){
         //INSERT YOUR CODE HERE
         return player.getPlayerTeam() == team;
-    }
-
-    public Player[][] getTeamA(){
-        return teamA;
-    }
-
-    public Player[][] getTeamB(){
-        return teamB;
-    }
-
-    public Player[][] getOpponentTeamPlayers(Player player){
-        if(player.getPlayerTeam() == Team.A){
-            return teamB;
-        }else if(player.getPlayerTeam() == Team.B){
-            return teamA;
-        }
-        return null;
-    }
-
-    public Player[][] getFriendlyTeamPlayers(Player player){
-        if(player.getPlayerTeam() == Team.A){
-            return teamA;
-        }else if(player.getPlayerTeam() == Team.B){
-            return teamB;
-        }
-        return null;
     }
 
     /**
@@ -190,6 +229,94 @@ public class Arena{
         }
         return null;
     }
+
+    /**
+     * Validate the players in both Team A and B. Returns true if all of the following conditions hold:
+     * <p>
+     * 1. All the positions are filled. That is, there each team must have exactly numRow*numRowPlayers players.
+     * 2. There can be at most MAX_EACH_TYPE players of each type in each team. For example, if MAX_EACH_TYPE = 3
+     * then each team can have at most 3 Healers, 3 Tanks, 3 Samurais, 3 BlackMages, and 3 Phoenixes.
+     * <p>
+     * Returns true if all the conditions above are satisfied, false otherwise.
+     *
+     * @return whether all player of both team meet the requirement
+     */
+    public boolean validatePlayers(){
+        int i, j;
+
+        /* Team A Variables for counting */
+        int A_countMembers;
+        int A_countHealer = 0, A_countTanks = 0, A_countSamurais = 0, A_countBlackMages = 0, A_countPhoenixes = 0, A_countCherry = 0;
+
+        /* Team B Variables for counting */
+        int B_countMembers;
+        int B_countHealer = 0, B_countTanks = 0, B_countSamurais = 0, B_countBlackMages = 0, B_countPhoenixes = 0, B_countCherry = 0;
+
+
+        for(i = 0; i < NUMBER_OF_ROWS; i++){        /* Go through every Row */
+            for(j = 0; j < numRowPlayers; j++){        /* Go through every Player */
+                switch(teamA[i][j].getType()){
+                    case Healer:
+                        A_countHealer++;
+                        break;
+                    case Tank:
+                        A_countTanks++;
+                        break;
+                    case Samurai:
+                        A_countSamurais++;
+                        break;
+                    case BlackMage:
+                        A_countBlackMages++;
+                        break;
+                    case Phoenix:
+                        A_countPhoenixes++;
+                        break;
+                    case Cherry:
+                        A_countCherry++;
+                        break;
+                }
+
+                switch(teamB[i][j].getType()){
+                    case Healer:
+                        B_countHealer++;
+                        break;
+                    case Tank:
+                        B_countTanks++;
+                        break;
+                    case Samurai:
+                        B_countSamurais++;
+                        break;
+                    case BlackMage:
+                        B_countBlackMages++;
+                        break;
+                    case Phoenix:
+                        B_countPhoenixes++;
+                        break;
+                    case Cherry:
+                        B_countCherry++;
+                        break;
+                }
+            }
+        }
+
+        //If one of count_type variable exceeds MAX_EACH_TYPE, then the match is not ready
+        if((A_countHealer > MAX_EACH_TYPE || A_countTanks > MAX_EACH_TYPE || A_countSamurais > MAX_EACH_TYPE || A_countBlackMages > MAX_EACH_TYPE || A_countPhoenixes > MAX_EACH_TYPE || A_countCherry > MAX_EACH_TYPE)
+                || (B_countHealer > MAX_EACH_TYPE || B_countTanks > MAX_EACH_TYPE || B_countSamurais > MAX_EACH_TYPE || B_countBlackMages > MAX_EACH_TYPE || B_countPhoenixes > MAX_EACH_TYPE || B_countCherry > MAX_EACH_TYPE)){
+            return false;
+        }
+
+        A_countMembers = A_countHealer + A_countTanks + A_countSamurais + A_countBlackMages + A_countPhoenixes + A_countCherry;
+        B_countMembers = B_countHealer + B_countTanks + B_countSamurais + B_countBlackMages + B_countPhoenixes + B_countCherry;
+
+        //If number of players on both sides are not equal, then the match is not ready
+        if(A_countMembers != NUMBER_OF_ROWS * numRowPlayers || B_countMembers != NUMBER_OF_ROWS * numRowPlayers){
+            return false;
+        }
+
+        return true;
+    }
+
+    public enum Row{Front, Back}    //enum for specifying the front or back row
 
     /**
      * This method simulates the battle between teamA and teamB. The method should have a loop that signifies
@@ -288,31 +415,6 @@ public class Arena{
     }
 
     /**
-     * This methods receives a player configuration (i.e., team, type, row, and position),
-     * creates a new player instance, and places him at the specified position.
-     *
-     * @param team     is either Team.A or Team.B
-     * @param pType    is one of the Player.Type  {Healer, Tank, Samurai, BlackMage, Phoenix}
-     * @param row      either Row.Front or Row.Back
-     * @param position is the position of the player in the row. Note that position starts from 1, 2, 3....
-     */
-    public void addPlayer(Team team, Player.PlayerType pType, Row row, int position){
-        if(team == Team.A){
-            if(row == Row.Front){
-                teamA[0][position - 1] = new Player(pType, team, this, new PlayerPosition(0, position - 1));
-            }else if(row == Row.Back){
-                teamA[1][position - 1] = new Player(pType, team, this, new PlayerPosition(1, position - 1));
-            }
-        }else if(team == Team.B){
-            if(row == Row.Front){
-                teamB[0][position - 1] = new Player(pType, team, this, new PlayerPosition(0, position - 1));
-            }else if(row == Row.Back){
-                teamB[1][position - 1] = new Player(pType, team, this, new PlayerPosition(1, position - 1));
-            }
-        }
-    }
-
-    /**
      * By giving an array of player, this function can identify the team of the player array.
      *
      * @param teamArray target Team which you want to check.
@@ -327,83 +429,7 @@ public class Arena{
         }
     }
 
-    /**
-     * Validate the players in both Team A and B. Returns true if all of the following conditions hold:
-     * <p>
-     * 1. All the positions are filled. That is, there each team must have exactly numRow*numRowPlayers players.
-     * 2. There can be at most MAX_EACH_TYPE players of each type in each team. For example, if MAX_EACH_TYPE = 3
-     * then each team can have at most 3 Healers, 3 Tanks, 3 Samurais, 3 BlackMages, and 3 Phoenixes.
-     * <p>
-     * Returns true if all the conditions above are satisfied, false otherwise.
-     *
-     * @return whether all player of both team meet the requirement
-     */
-    public boolean validatePlayers(){
-        int i, j;
-        int A_countMembers;
-        int A_countHealer = 0, A_countTanks = 0, A_countSamurais = 0, A_countBlackMages = 0, A_countPhoenixes = 0, A_countCherry = 0;
-        int B_countMembers;
-        int B_countHealer = 0, B_countTanks = 0, B_countSamurais = 0, B_countBlackMages = 0, B_countPhoenixes = 0, B_countCherry = 0;
-        for(i = 0; i < NUMBER_OF_ROWS; i++){
-            for(j = 0; j < numRowPlayers; j++){
-                switch(teamA[i][j].getType()){
-                    case Healer:
-                        A_countHealer++;
-                        break;
-                    case Tank:
-                        A_countTanks++;
-                        break;
-                    case Samurai:
-                        A_countSamurais++;
-                        break;
-                    case BlackMage:
-                        A_countBlackMages++;
-                        break;
-                    case Phoenix:
-                        A_countPhoenixes++;
-                        break;
-                    case Cherry:
-                        A_countCherry++;
-                        break;
-                }
-
-                switch(teamB[i][j].getType()){
-                    case Healer:
-                        B_countHealer++;
-                        break;
-                    case Tank:
-                        B_countTanks++;
-                        break;
-                    case Samurai:
-                        B_countSamurais++;
-                        break;
-                    case BlackMage:
-                        B_countBlackMages++;
-                        break;
-                    case Phoenix:
-                        B_countPhoenixes++;
-                        break;
-                    case Cherry:
-                        B_countCherry++;
-                        break;
-                }
-            }
-        }
-
-        if((A_countHealer > MAX_EACH_TYPE || A_countTanks > MAX_EACH_TYPE || A_countSamurais > MAX_EACH_TYPE || A_countBlackMages > MAX_EACH_TYPE || A_countPhoenixes > MAX_EACH_TYPE || A_countCherry > MAX_EACH_TYPE) ||
-                (B_countHealer > MAX_EACH_TYPE || B_countTanks > MAX_EACH_TYPE || B_countSamurais > MAX_EACH_TYPE || B_countBlackMages > MAX_EACH_TYPE || B_countPhoenixes > MAX_EACH_TYPE || B_countCherry > MAX_EACH_TYPE)){
-            return false;
-        }
-
-        A_countMembers = A_countHealer + A_countTanks + A_countSamurais + A_countBlackMages + A_countPhoenixes + A_countCherry;
-        B_countMembers = B_countHealer + B_countTanks + B_countSamurais + B_countBlackMages + B_countPhoenixes + B_countCherry;
-
-        if(A_countMembers != NUMBER_OF_ROWS * numRowPlayers || B_countMembers != NUMBER_OF_ROWS * numRowPlayers){
-            return false;
-        }
-
-        return true;
-    }
+    public enum Team{A, B}      //enum for specifying team A or B
 
     /**
      * This method displays the current area state, and is already implemented for you.
@@ -426,10 +452,6 @@ public class Arena{
         str.append("@ Total HP of Team A = " + getSumHP(arena.teamA) + ". @ Total HP of Team B = " + getSumHP(arena.teamB) + "\n\n");
         System.out.print(str.toString());
     }
-
-    public enum Row{Front, Back}
-
-    public enum Team{A, B}
 
     /**
      * This method writes a log (as round number, sum of HP of teamA, and sum of HP of teamB) into the log file.

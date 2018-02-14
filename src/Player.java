@@ -4,15 +4,14 @@ public class Player{
 
     public enum TargetingMode{attack_LowestHP, heal_teamLowestHP, selectAllTarget, revive_teamLowestHP}
 
-    public enum PlayerType{Healer, Tank, Samurai, BlackMage, Phoenix, Cherry}
-
-    private final int MIN_HP_VALUE = 6000;
+    private final int MIN_HP_VALUE = 6000;        //This variable is used in finding lowest number
 
     private static Arena arena;                   //Specifies the arena which this player joined in.
     private Arena.Team team;                      //Specifies the team which this player joined in.
-
-    private PlayerType type;                      //Type of this player. Can be one of either Healer,
-    //Tank, Samurai, BlackMage, or Phoenix
+    /* Must have fields for every players */
+    private PlayerPosition playerPosition;        //Position of the player
+    private PlayerType type;                      //Type of this player. Can be one of either Healer, Tank, Samurai, BlackMage, or Phoenix
+    private int internalTurn;                     //A turn meter which will reset to ONE AFTER THE PLAYER takeAction(), and will be set to ZERO BEFORE THE PLAYER takeAction()
 
     private double maxHP;                         //Max HP of this player
     private double currentHP;                     //Current HP of this player
@@ -20,20 +19,24 @@ public class Player{
     private int numSpecialTurns;                  //Number of Special Turns of this player
 
     private int current_Turn_In_A_Row;            //Number of Special Turns of this player
-    private int internalTurn;                     //A turn meter which will reset to ONE AFTER THE PLAYER takeAction()
-    //And will set to ZERO BEFORE THE PLAYER takeAction()
-
+    /* Status */
     private boolean isTaunting;                   //Priority of this player to being attacked
+    private boolean isSleeping;                   //Sleep Status of this player
 
-    private boolean isSleeping;
+    /**
+     * This method returns getTurnsSinceStartSleeping of this player.
+     *
+     * @return TurnsSinceStartSleeping
+     */
+    public int getTurnsSinceStartSleeping(){
+        return turnsSinceStartSleeping;
+    }
 
     private int turnsSinceStartSleeping = 0;
 
     private boolean isCursed;                     //Cursed Status of this player
     private Player iAmCursing;                    //The player who given the Cursed Status by this player
     private Player cursedBy;                      //The player who given the Cursed Status to this player
-
-    private PlayerPosition playerPosition;
 
     /**
      * Constructor of class Player, which initializes this player's type, maxHP, atk, numSpecialTurns,
@@ -165,15 +168,8 @@ public class Player{
     }
 
     /**
-     * This method returns getTurnsSinceStartSleeping of this player.
-     * @return TurnsSinceStartSleeping
-     */
-    public int getTurnsSinceStartSleeping(){
-        return turnsSinceStartSleeping;
-    }
-
-    /**
      * Set TurnsSinceStartSleeping
+     *
      * @param turnsSinceStartSleeping a target integer for TurnsSinceStartSleeping
      */
     public void setTurnsSinceStartSleeping(int turnsSinceStartSleeping){
@@ -182,10 +178,36 @@ public class Player{
 
     /**
      * Set sleeping status
+     *
      * @param sleeping a boolean of target status
      */
     public void setSleeping(boolean sleeping){
         isSleeping = sleeping;
+    }
+
+    /**
+     * This method will select targets for any special ability which require or has Area of Effects
+     *
+     * @param targetingMode The mode to get Target based on the player action
+     *
+     * @return An Array for player positions
+     */
+    private ArrayList<PlayerPosition> findMultipleTargetablePlayers(TargetingMode targetingMode){
+        int i, j;
+        Player[][] targetTeamPlayers = arena.getOpponentTeamPlayers(this);
+        ArrayList<PlayerPosition> playerPositionArrayList = new ArrayList<>();
+
+        if(targetingMode == TargetingMode.selectAllTarget){
+            //Cycle through all player
+            for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
+                for(j = 0; j < arena.getNumRowPlayers(); j++){
+                    if(targetTeamPlayers[i][j].isAlive()){
+                        playerPositionArrayList.add(new PlayerPosition(i, j));      /* Only alive players are eligible */
+                    }
+                }
+            }
+        }
+        return playerPositionArrayList;
     }
 
     /**
@@ -239,26 +261,144 @@ public class Player{
     }
 
     /**
-     * This method will select targets for any special ability which require or has Area of Effects
+     * This method will select an Algorithm for each action that is the most suitable
+     * 1. Attacking and Cursing - Find A player with the LOWEST HP PERCENTAGE on the FRONT ROW
+     * ** Taunting - If there are multiple taunting player, the first taunting player according to
+     * the position order gets attacked first.**
+     * 2. Healing - Find an ALLY with the LOWEST HP PERCENTAGE
+     * 3. Find a dead Ally in the first according to the position
+     *
      * @param targetingMode The mode to get Target based on the player action
-     * @return An Array for player positions
+     *
+     * @return A target player position
      */
-    private ArrayList<PlayerPosition> findMultipleTargetablePlayers(TargetingMode targetingMode){
+    private PlayerPosition findTargetablePlayers(TargetingMode targetingMode){
         int i, j;
-        Player[][] targetTeamPlayers = arena.getOpponentTeamPlayers(this);
-        ArrayList<PlayerPosition> playerPositionArrayList = new ArrayList<>();
+        Player[][] targetTeamPlayers;
 
-        if(targetingMode == TargetingMode.selectAllTarget){
-            //Cycle through all player
-            for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
-                for(j = 0; j < arena.getNumRowPlayers(); j++){
-                    if(targetTeamPlayers[i][j].isAlive()){
-                        playerPositionArrayList.add(new PlayerPosition(i, j));      /* Only alive players are eligible */
+        switch(targetingMode){      /* Targeting Mode Classification */
+            case attack_LowestHP:{      /* Called by attack() and curse() */
+
+                //Assigns target team which is opponent team.
+                targetTeamPlayers = arena.getOpponentTeamPlayers(this);
+
+                ArrayList<PlayerPosition> tauntingPlayerPosition = new ArrayList<>();
+                //Search for all player who is taunting (They have higher priority)
+                for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
+                    for(j = 0; j < arena.getNumRowPlayers(); j++){
+                        if(targetTeamPlayers[i][j].isAlive() && targetTeamPlayers[i][j].isTaunting){
+                            tauntingPlayerPosition.add(new PlayerPosition(i, j));
+                        }
                     }
                 }
+
+                if(tauntingPlayerPosition.size() > 1){      /* If there are more than 1 player taunting. */
+                    //Returns the lowest position, see searchLowestPosition(), if there are multiple taunt target with same HP.
+                    return searchLowestPosition(tauntingPlayerPosition, targetTeamPlayers);
+                }else if(tauntingPlayerPosition.size() == 1){       /* If there is only 1 player taunting. */
+                    //Returns the only one who is taunting
+                    return tauntingPlayerPosition.get(0);
+                }
+
+                /* If there is no player taunting. */
+                //Search for THE LOWEST HP
+                double minHPValue = MIN_HP_VALUE;
+                i = arena.getFrontRow(targetTeamPlayers);       /* A player can only attack the front row */
+                for(j = 0; j < arena.getNumRowPlayers(); j++){
+                    if(targetTeamPlayers[i][j].isAlive() && (targetTeamPlayers[i][j].currentHP <= minHPValue)){
+                        minHPValue = targetTeamPlayers[i][j].currentHP;
+                    }
+                }
+
+                //If there are any player whose HP is equals to the lowest, stores their position.
+                ArrayList<PlayerPosition> playerPositionArrayList = new ArrayList<>();
+                searchLowestHPinArray(TargetingMode.attack_LowestHP, playerPositionArrayList, targetTeamPlayers, minHPValue);
+
+                if(StudentTester.debug_TargetSearching){    /* For Debugging Purposes only */
+                    System.out.println("Total HP: " + Arena.getSumHP(targetTeamPlayers));
+                }
+
+                if(playerPositionArrayList.size() == 1){        /* If there are only 1 player who has the lowest HP. */
+                    return playerPositionArrayList.get(0);
+                }else if(playerPositionArrayList.size() == 0){      /* On the front row, if all player is dead */
+                    if(Arena.getSumHP(targetTeamPlayers) == 0.0){
+                        //If all player of the opponent team has sum of current HP = 0
+                        return null;
+                    }
+                }
+
+                //Returns the lowest position, see searchLowestPosition()
+                return searchLowestPosition(playerPositionArrayList, targetTeamPlayers);
+
+            }
+            case heal_teamLowestHP:{    /* Called by heal() */
+
+                //Assigns target team which is ally team.
+                targetTeamPlayers = arena.getFriendlyTeamPlayers(this);
+                double minHPValue = MIN_HP_VALUE;
+
+                // Search for lowest HP
+                for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
+                    for(j = 0; j < arena.getNumRowPlayers(); j++){
+                        if(targetTeamPlayers[i][j].isAlive() && !targetTeamPlayers[i][j].isCursed()
+                                && targetTeamPlayers[i][j].currentHP < targetTeamPlayers[i][j].maxHP
+                                && targetTeamPlayers[i][j].currentHP <= minHPValue){
+                            minHPValue = targetTeamPlayers[i][j].currentHP;
+                        }
+                    }
+                }
+
+                //Search player who has HP equals to that Lowest HP
+                ArrayList<PlayerPosition> playerPositionArrayList = new ArrayList<>();
+                searchLowestHPinArray(TargetingMode.heal_teamLowestHP, playerPositionArrayList, targetTeamPlayers, minHPValue);
+
+                if(playerPositionArrayList.size() == 1){
+                    return playerPositionArrayList.get(0);
+                }else if(playerPositionArrayList.size() > 1){
+                    //Returns the lowest position, see searchLowestPosition()
+                    return searchLowestPosition(playerPositionArrayList, targetTeamPlayers);
+                }
+
+            }
+            case selectAllTarget:{
+                //It is illegal to call this function in this mode. If you call it, you will be arrested.
+                break;
+            }
+            case revive_teamLowestHP:{      /* Called by revive() */
+
+                //Assigns target team which is ally team.
+                targetTeamPlayers = arena.getFriendlyTeamPlayers(this);
+                int countDead = 0;      /* Count Number of Dead Player */
+
+                // Find number of dead players
+                for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
+                    for(j = 0; j < arena.getNumRowPlayers(); j++){
+                        if(!targetTeamPlayers[i][j].isAlive()){
+                            countDead++;
+                        }
+                    }
+                }
+
+                if(countDead == 0){     /* If there is no one to revive */
+                    return null;
+                }
+
+                //Search player who has HP equals to 0 HP
+                ArrayList<PlayerPosition> deadPositionsArrayList = new ArrayList<>();
+                searchLowestHPinArray(TargetingMode.revive_teamLowestHP, deadPositionsArrayList, targetTeamPlayers, 0.0);
+
+                PlayerPosition minPosition;
+                if(countDead > 1){
+                    //Returns the lowest position, see searchLowestPosition()
+                    return searchLowestPosition(deadPositionsArrayList, targetTeamPlayers);
+                }else{
+                    minPosition = deadPositionsArrayList.get(0);
+                }
+                //Returns null if there is no target.
+                return minPosition;
             }
         }
-        return playerPositionArrayList;
+        return null;
     }
 
     /**
@@ -280,217 +420,25 @@ public class Player{
     }
 
     /**
-     * This method will select an Algorithm for each action that is the most suitable
-     * 1. Attacking and Cursing - Find A player with the LOWEST HP PERCENTAGE on the FRONT ROW
-     * ** Taunting - If there are multiple taunting player, the first taunting player according to
-     * the position order gets attacked first.**
-     * 2. Healing - Find an ALLY with the LOWEST HP PERCENTAGE
-     * 3. Find a dead Ally in the first according to the position
+     * By giving an ArrayList of PlayerPosition and Team Player Array, the method can search for lowest Position.
      *
-     * @param targetingMode The mode to get Target based on the player action
+     * @param playerPositionArrayList ArrayList of Player Position
+     * @param targetTeamPlayers       2-Dimensional Array of Target players
      *
-     * @return A target player position
+     * @return Minimum position
      */
-    private PlayerPosition findTargetablePlayers(TargetingMode targetingMode){
-        int i, j;
-        int countDead = 0;
-        Player[][] targetTeamPlayers;
+    private PlayerPosition searchLowestPosition(ArrayList<PlayerPosition> playerPositionArrayList, Player[][] targetTeamPlayers){
+        int a, x, y;
+        PlayerPosition minPosition = playerPositionArrayList.get(0);        /* Get the first element of the ArrayList */
+        for(a = 0; a < playerPositionArrayList.size(); a++){        /* Go through every element of ArrayList */
+            x = playerPositionArrayList.get(a).getI();      /* Assign x to i value of element number #a */
+            y = playerPositionArrayList.get(a).getJ();      /* Assign y to j value of element number #a */
 
-        switch(targetingMode){
-            case attack_LowestHP:{
-                targetTeamPlayers = arena.getOpponentTeamPlayers(this);
-                double minHPValue;
-
-                ArrayList<PlayerPosition> tauntingPlayerPosition = new ArrayList<>();
-                for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
-                    for(j = 0; j < arena.getNumRowPlayers(); j++){
-                        if(targetTeamPlayers[i][j].isAlive() && targetTeamPlayers[i][j].isTaunting){
-                            tauntingPlayerPosition.add(new PlayerPosition(i, j));
-                        }
-                    }
-                }
-
-                if(tauntingPlayerPosition.size() > 1){
-                    // If there are more than one player who is taunting, find the lowest PlayerPosition of those
-                    int x, y;
-                    //System.out.println("Statement 1");
-                    PlayerPosition minPosition = tauntingPlayerPosition.get(0);
-                    for(i = 0; i < tauntingPlayerPosition.size(); i++){
-                        x = tauntingPlayerPosition.get(i).getI();
-                        y = tauntingPlayerPosition.get(i).getJ();
-                        if(!targetTeamPlayers[x][y].isAlive()){
-                            continue;
-                        }
-                        if(targetTeamPlayers[x][y].playerPosition.isLowerThan(minPosition)){
-                            minPosition = targetTeamPlayers[x][y].playerPosition;
-                        }
-                    }
-                    return minPosition;
-                }else if(tauntingPlayerPosition.size() == 1){
-                    //System.out.println("Statement 2");
-                    return tauntingPlayerPosition.get(0);
-                }else{
-                    //Search for THE LOWEST HP
-                    //System.out.println("Statement 3");
-                    minHPValue = MIN_HP_VALUE;
-                    ArrayList<PlayerPosition> playerPositionArrayList = new ArrayList<>();
-                    for(j = 0; j < arena.getNumRowPlayers(); j++){
-                        if(targetTeamPlayers[arena.getFrontRow(targetTeamPlayers)][j].isAlive()
-                                && (targetTeamPlayers[arena.getFrontRow(targetTeamPlayers)][j].currentHP <= minHPValue)){
-                            minHPValue = targetTeamPlayers[arena.getFrontRow(targetTeamPlayers)][j].currentHP;
-                        }
-                    }
-
-                    //If there are any player whose HP is equals to the lowest, stores their position.
-                    for(j = 0; j < arena.getNumRowPlayers(); j++){
-                        if(targetTeamPlayers[arena.getFrontRow(targetTeamPlayers)][j].isAlive()
-                                && targetTeamPlayers[arena.getFrontRow(targetTeamPlayers)][j].currentHP == minHPValue){
-                            playerPositionArrayList.add(new PlayerPosition(arena.getFrontRow(targetTeamPlayers), j));
-
-                            if(StudentTester.debug_TargetSearching){     /* For Debugging Purposes only */
-                                System.out.println(playerPositionArrayList.get(playerPositionArrayList.size() - 1).toString());
-                            }
-                        }
-                    }
-
-                    if(StudentTester.debug_TargetSearching){    /* For Debugging Purposes only */
-                        System.out.println("Total HP: " + Arena.getSumHP(targetTeamPlayers));
-                    }
-
-                    if(playerPositionArrayList.size() == 1){
-                        return playerPositionArrayList.get(0);
-                    }else if(playerPositionArrayList.size() == 0){
-                        for(i = 0; i < arena.getNumRowPlayers(); i++){
-                            if(targetTeamPlayers[arena.getFrontRow(targetTeamPlayers)][i].currentHP > 0){
-                                playerPositionArrayList.add(new PlayerPosition(arena.getFrontRow(targetTeamPlayers), i));
-                            }
-                        }
-                        if(Arena.getSumHP(targetTeamPlayers) == 0.0){
-                            // If all player of the opponent team = 0
-                            return null;
-                        }else{
-                            return playerPositionArrayList.get(0);
-                        }
-                    }
-
-                    //Search for lowest position
-                    int countArrayList = 0;
-                    PlayerPosition minPosition = playerPositionArrayList.get(0);
-                    for(i = 0; i < playerPositionArrayList.size(); i++){
-                        if(!targetTeamPlayers[playerPositionArrayList.get(countArrayList).getI()][playerPositionArrayList.get(countArrayList).getJ()].isAlive()){
-                            continue;
-                        }
-                        if(targetTeamPlayers[playerPositionArrayList.get(countArrayList).getI()]
-                                [playerPositionArrayList.get(countArrayList).getJ()].playerPosition.isLowerThan(minPosition)){
-                            minPosition = targetTeamPlayers[playerPositionArrayList.get(countArrayList).getI()]
-                                    [playerPositionArrayList.get(countArrayList).getJ()].playerPosition;
-                        }
-                    }
-                    return minPosition;
-                }
-            }
-            case heal_teamLowestHP:{
-                targetTeamPlayers = arena.getFriendlyTeamPlayers(this);
-                double minHPValue = MIN_HP_VALUE;
-                ArrayList<PlayerPosition> playerPositionArrayList = new ArrayList<>();
-
-                // Search for lowest HP
-                for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
-                    for(j = 0; j < arena.getNumRowPlayers(); j++){
-                        if(targetTeamPlayers[i][j].isAlive() && !targetTeamPlayers[i][j].isCursed()
-                                && targetTeamPlayers[i][j].currentHP < targetTeamPlayers[i][j].maxHP
-                                && targetTeamPlayers[i][j].currentHP <= minHPValue){
-                            minHPValue = targetTeamPlayers[i][j].currentHP;
-                        }
-                    }
-                }
-
-                // Search player who has HP equals to that Lowest HP
-                for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
-                    for(j = 0; j < arena.getNumRowPlayers(); j++){
-                        if(targetTeamPlayers[i][j].currentHP == minHPValue){
-                            playerPositionArrayList.add(new PlayerPosition(i, j));
-                        }
-                    }
-                }
-
-                if(playerPositionArrayList.size() == 1){
-                    return playerPositionArrayList.get(0);
-                }else if(playerPositionArrayList.size() > 1){
-                    int countArrayList = 0, x, y;
-                    PlayerPosition minPosition = playerPositionArrayList.get(0);
-                    for(i = 0; i < playerPositionArrayList.size(); i++){
-                        x = playerPositionArrayList.get(countArrayList).getI();
-                        y = playerPositionArrayList.get(countArrayList).getJ();
-                        if(!targetTeamPlayers[x][y].isAlive()){
-                            continue;
-                        }
-
-                        // Search for lowest Position
-                        if(targetTeamPlayers[x][y].playerPosition.isLowerThan(minPosition)){
-                            minPosition = targetTeamPlayers[x][y].playerPosition;
-                        }
-                    }
-                    return minPosition;
-                }
-
-            }
-            case selectAllTarget:{
-                break;
-            }
-            case revive_teamLowestHP:{
-
-                targetTeamPlayers = arena.getFriendlyTeamPlayers(this);
-
-                // Find number of dead players
-                for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
-                    for(j = 0; j < arena.getNumRowPlayers(); j++){
-                        if(!targetTeamPlayers[i][j].isAlive()){
-                            countDead++;
-                        }
-                    }
-                }
-
-                if(countDead == 0){
-                    return null;
-                }
-
-                int countArrayList = 0;
-                ArrayList<PlayerPosition> deadPositionsArrayList = new ArrayList<>();
-                for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
-                    for(j = 0; j < arena.getNumRowPlayers(); j++){
-                        if(!targetTeamPlayers[i][j].isAlive()){
-                            deadPositionsArrayList.add(new PlayerPosition(i, j));
-                            System.out.println("deadPositionsArrayList: " + deadPositionsArrayList.get(countArrayList).toString() + ", hp: " + targetTeamPlayers[i][j].getCurrentHP());
-                            countArrayList++;
-                        }
-                    }
-                }
-
-                PlayerPosition minPosition;
-                if(countDead > 1){
-                    countArrayList = 0;
-                    int x, y;
-                    minPosition = new PlayerPosition(Arena.NUMBER_OF_ROWS, arena.getNumRowPlayers());
-                    for(i = 0; i < deadPositionsArrayList.size(); i++){
-                        x = deadPositionsArrayList.get(countArrayList).getI();
-                        y = deadPositionsArrayList.get(countArrayList).getJ();
-                        if(targetTeamPlayers[x][y].isAlive()){
-                            continue;
-                        }
-
-                        // Search for lowest Position
-                        if(targetTeamPlayers[x][y].playerPosition.isLowerThan(minPosition)){
-                            minPosition = targetTeamPlayers[x][y].playerPosition;
-                        }
-                    }
-                }else{
-                    minPosition = deadPositionsArrayList.get(0);
-                }
-                return minPosition;
+            if(targetTeamPlayers[x][y].playerPosition.isLowerThan(minPosition)){
+                minPosition = targetTeamPlayers[x][y].playerPosition;
             }
         }
-        return null;
+        return minPosition;
     }
 
     /**
@@ -581,7 +529,6 @@ public class Player{
             cleanBuffWhenDie(target);       /* Clean any buff on the target player since the target is killed */
 
         }
-
     }
 
     /**
@@ -785,21 +732,45 @@ public class Player{
                 + move + " " + target.getPlayerTeam().name() + target.playerPosition.toReadableString() + " {" + target.type.name() + "}";
     }
 
-    private PlayerPosition searchLowestPosition(ArrayList<PlayerPosition> playerPositionArrayList, Player[][] targetTeamPlayers){
-        int i, x, y, countArrayList = 0;
-        PlayerPosition minPosition = playerPositionArrayList.get(0);
-        for(i = 0; i < playerPositionArrayList.size(); i++){
-            x = playerPositionArrayList.get(countArrayList).getI();
-            if(!targetTeamPlayers[x][playerPositionArrayList.get(countArrayList).getJ()].isAlive()){
-                continue;
+    /**
+     * This method will search for the Lowest HP in an Array
+     *
+     * @param targetingMode           Depending on which action calls this function
+     * @param playerPositionArrayList target ArrayList for modifying
+     * @param targetTeamPlayers       2-Dimensional Array of Target players for searching
+     * @param minValue                Minimum Value for searching
+     */
+    private void searchLowestHPinArray(TargetingMode targetingMode, ArrayList<PlayerPosition> playerPositionArrayList, Player[][] targetTeamPlayers, double minValue){
+        int i, j;
+        if(targetingMode == TargetingMode.attack_LowestHP){
+            i = arena.getFrontRow(targetTeamPlayers);
+            for(j = 0; j < arena.getNumRowPlayers(); j++){
+                if(targetTeamPlayers[i][j].isAlive() && targetTeamPlayers[i][j].currentHP == minValue){
+                    playerPositionArrayList.add(new PlayerPosition(i, j));
+
+                    if(StudentTester.debug_TargetSearching){     /* For Debugging Purposes only */
+                        System.out.println(playerPositionArrayList.get(playerPositionArrayList.size() - 1).toString());
+                    }
+                }
             }
-            if(targetTeamPlayers[playerPositionArrayList.get(countArrayList).getI()]
-                    [playerPositionArrayList.get(countArrayList).getJ()].playerPosition.isLowerThan(minPosition)){
-                minPosition = targetTeamPlayers[playerPositionArrayList.get(countArrayList).getI()]
-                        [playerPositionArrayList.get(countArrayList).getJ()].playerPosition;
+        }else if(targetingMode == TargetingMode.heal_teamLowestHP){
+            for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
+                for(j = 0; j < arena.getNumRowPlayers(); j++){
+                    if(targetTeamPlayers[i][j].currentHP == minValue){
+                        playerPositionArrayList.add(new PlayerPosition(i, j));
+                    }
+                }
+            }
+        }else if(targetingMode == TargetingMode.revive_teamLowestHP){
+            for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
+                for(j = 0; j < arena.getNumRowPlayers(); j++){
+                    if(!targetTeamPlayers[i][j].isAlive()){
+                        playerPositionArrayList.add(new PlayerPosition(i, j));
+                    }
+                }
             }
         }
-        return minPosition;
     }
 
+    public enum PlayerType{Healer, Tank, Samurai, BlackMage, Phoenix, Cherry}
 }
