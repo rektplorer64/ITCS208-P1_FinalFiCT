@@ -233,8 +233,17 @@ public class Arena{
 
             for(row = 0; row < NUMBER_OF_ROWS; row++){
                 for(player = 0; player < numRowPlayers; player++){
-                    if(!teamA[row][player].isAlive()){
+                    if(!teamA[row][player].isAlive() || (teamA[row][player].isSleeping()
+                            && teamA[row][player].getTurnsSinceStartSleeping() == 0)){
+                        if(teamA[row][player].isSleeping()){
+                            teamA[row][player].setTurnsSinceStartSleeping(1);
+                        }
+                        //System.out.println("Skip: " + teamA[row][player].toStringDebug("", teamA[row][player]));
                         continue;
+                    }
+
+                    if(teamA[row][player].getTurnsSinceStartSleeping() == 1){
+                        teamA[row][player].setSleeping(false);
                     }
                     teamA[row][player].takeAction(this);
                 }
@@ -242,8 +251,17 @@ public class Arena{
 
             for(row = 0; row < NUMBER_OF_ROWS; row++){
                 for(player = 0; player < numRowPlayers; player++){
-                    if(!teamB[row][player].isAlive()){
+                    if(!teamB[row][player].isAlive() || (teamB[row][player].isSleeping()
+                            && teamB[row][player].getTurnsSinceStartSleeping() == 0)){
+                        if(teamB[row][player].isSleeping()){
+                            teamB[row][player].setTurnsSinceStartSleeping(1);
+                        }
+                        //System.out.println("Skip: " + teamB[row][player].toStringDebug("", teamB[row][player]));
                         continue;
+                    }
+
+                    if(teamB[row][player].getTurnsSinceStartSleeping() == 1){
+                        teamB[row][player].setSleeping(false);
                     }
                     teamB[row][player].takeAction(this);
                 }
@@ -256,7 +274,7 @@ public class Arena{
             }
         }
 
-        System.out.println("The Winning Team: " + identifyTeam(getWinningTeam()).name());
+        System.out.println("@@@ Team " + identifyTeam(getWinningTeam()).name() + " won.");
 
     }
 

@@ -6,7 +6,7 @@ public class Player{
 
     public enum PlayerType{Healer, Tank, Samurai, BlackMage, Phoenix, Cherry}
 
-    private final int MIN_HP_VALUE = 5000;
+    private final int MIN_HP_VALUE = 6000;
 
     private static Arena arena;                   //Specifies the arena which this player joined in.
     private Arena.Team team;                      //Specifies the team which this player joined in.
@@ -26,6 +26,7 @@ public class Player{
     private boolean isTaunting;                   //Priority of this player to being attacked
 
     private boolean isSleeping;
+
     private int turnsSinceStartSleeping = 0;
 
     private boolean isCursed;                     //Cursed Status of this player
@@ -159,6 +160,18 @@ public class Player{
         }
     }
 
+    public int getTurnsSinceStartSleeping(){
+        return turnsSinceStartSleeping;
+    }
+
+    public void setTurnsSinceStartSleeping(int turnsSinceStartSleeping){
+        this.turnsSinceStartSleeping = turnsSinceStartSleeping;
+    }
+
+    public void setSleeping(boolean sleeping){
+        isSleeping = sleeping;
+    }
+
     /**
      * Returns whether this player is sleeping.
      *
@@ -209,22 +222,21 @@ public class Player{
         this.internalTurn = 0;
     }
 
-    private PlayerPosition[] findMultipleTargetablePlayers(TargetingMode targetingMode){
-        int i, j, countAlive = 0;
+    private ArrayList<PlayerPosition> findMultipleTargetablePlayers(TargetingMode targetingMode){
+        int i, j;
         Player[][] targetTeamPlayers = arena.getOpponentTeamPlayers(this);
-        PlayerPosition playerPosition[] = new PlayerPosition[arena.getNumRowPlayers() * Arena.NUMBER_OF_ROWS];
+        ArrayList<PlayerPosition> playerPositionArrayList = new ArrayList<>();
 
         if(targetingMode == TargetingMode.selectAllTarget){
             for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
                 for(j = 0; j < arena.getNumRowPlayers(); j++){
                     if(targetTeamPlayers[i][j].isAlive()){
-                        playerPosition[countAlive] = new PlayerPosition(i, j);
-                        countAlive++;
+                        playerPositionArrayList.add(new PlayerPosition(i, j));
                     }
                 }
             }
         }
-        return playerPosition;
+        return playerPositionArrayList;
     }
 
     /**
@@ -387,20 +399,21 @@ public class Player{
                 if(playerPositionArrayList.size() == 1){
                     return playerPositionArrayList.get(0);
                 }else if(playerPositionArrayList.size() > 1){
-                    int countArrayList = 0;
+                    int countArrayList = 0, x, y;
                     PlayerPosition minPosition = playerPositionArrayList.get(0);
                     for(i = 0; i < playerPositionArrayList.size(); i++){
-                        if(!targetTeamPlayers[playerPositionArrayList.get(countArrayList).getI()][playerPositionArrayList.get(countArrayList).getJ()].isAlive()){
+                        x = playerPositionArrayList.get(countArrayList).getI();
+                        y = playerPositionArrayList.get(countArrayList).getJ();
+                        if(!targetTeamPlayers[x][y].isAlive()){
                             continue;
                         }
 
                         // Search for lowest Position
-                        if(targetTeamPlayers[playerPositionArrayList.get(countArrayList).getI()]
-                                [playerPositionArrayList.get(countArrayList).getJ()].playerPosition.isLowerThan(minPosition)){
-                            minPosition = targetTeamPlayers[playerPositionArrayList.get(countArrayList).getI()]
-                                    [playerPositionArrayList.get(countArrayList).getJ()].playerPosition;
+                        if(targetTeamPlayers[x][y].playerPosition.isLowerThan(minPosition)){
+                            minPosition = targetTeamPlayers[x][y].playerPosition;
                         }
                     }
+                    return minPosition;
                 }
 
             }
@@ -408,44 +421,58 @@ public class Player{
                 break;
             }
             case revive_teamLowestHP:{
+
                 targetTeamPlayers = arena.getFriendlyTeamPlayers(this);
 
+                // Find number of dead players
                 for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
                     for(j = 0; j < arena.getNumRowPlayers(); j++){
-                        if(targetTeamPlayers[i][j].currentHP == 0){
+                        if(!targetTeamPlayers[i][j].isAlive()){
                             countDead++;
                         }
                     }
                 }
+
                 if(countDead == 0){
-                    return new PlayerPosition(-1, -1);
+                    return null;
                 }
 
-                PlayerPosition deadPlayerPositions[] = new PlayerPosition[countDead];
-                int countDeadPlayerArray = 0;
+                int countArrayList = 0;
+                ArrayList<PlayerPosition> deadPositionsArrayList = new ArrayList<>();
                 for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
                     for(j = 0; j < arena.getNumRowPlayers(); j++){
-                        if(targetTeamPlayers[i][j].currentHP == 0){
-                            deadPlayerPositions[countDeadPlayerArray] = new PlayerPosition(i, j);
-                            countDeadPlayerArray++;
+                        if(!targetTeamPlayers[i][j].isAlive()){
+                            deadPositionsArrayList.add(new PlayerPosition(i, j));
+                            System.out.println("deadPositionsArrayList: " + deadPositionsArrayList.get(countArrayList).toString() + ", hp: " + targetTeamPlayers[i][j].getCurrentHP());
+                            countArrayList++;
                         }
                     }
                 }
 
-                PlayerPosition minPosition = new PlayerPosition();
+                PlayerPosition minPosition;
                 if(countDead > 1){
-                    for(i = 0; i < countDead; i++){
-                        if(i + 1 < countDead - 1 && deadPlayerPositions[i].isLowerThan(deadPlayerPositions[i + 1])){
-                            minPosition = deadPlayerPositions[i];
+                    countArrayList = 0;
+                    int x, y;
+                    minPosition = new PlayerPosition(Arena.NUMBER_OF_ROWS, arena.getNumRowPlayers());
+                    for(i = 0; i < deadPositionsArrayList.size(); i++){
+                        x = deadPositionsArrayList.get(countArrayList).getI();
+                        y = deadPositionsArrayList.get(countArrayList).getJ();
+                        if(targetTeamPlayers[x][y].isAlive()){
+                            continue;
+                        }
+
+                        // Search for lowest Position
+                        if(targetTeamPlayers[x][y].playerPosition.isLowerThan(minPosition)){
+                            minPosition = targetTeamPlayers[x][y].playerPosition;
                         }
                     }
                 }else{
-                    minPosition = deadPlayerPositions[0];
+                    minPosition = deadPositionsArrayList.get(0);
                 }
                 return minPosition;
             }
         }
-        return new PlayerPosition(-1, -1);
+        return null;
     }
 
     /**
@@ -460,16 +487,6 @@ public class Player{
         this.emptyInternalTurn();
         // Check if player has Status (Buff) and enforce the Turn rules.
         statusHandler(this);
-        if(this.isSleeping){
-            turnsSinceStartSleeping++;
-            if(turnsSinceStartSleeping != 2){
-                return;
-            }
-        }
-
-        if(turnsSinceStartSleeping != 0){
-            turnsSinceStartSleeping = 0;
-        }
 
         if(current_Turn_In_A_Row == numSpecialTurns){
             useSpecialAbility(arena.getFriendlyTeamPlayers(this), arena.getOpponentTeamPlayers(this));
@@ -544,7 +561,9 @@ public class Player{
 
     private void doubleSlash(Player[][] theirTeam){
         PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.attack_LowestHP);
-        assert targetPosition != null;
+        if(targetPosition == null){
+            return;
+        }
         Player target = theirTeam[targetPosition.getI()][targetPosition.getJ()];
 
         if(StudentTester.debug_ActionMessages){
@@ -577,6 +596,10 @@ public class Player{
 
     private void heal(Player[][] myTeam){
         PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.heal_teamLowestHP);
+        if(targetPosition == null){
+            System.out.println("No target for healing");
+            return;
+        }
         int i = targetPosition.getI(), j = targetPosition.getJ();
 
         myTeam[i][j].currentHP += (0.25 * myTeam[i][j].maxHP);
@@ -591,10 +614,12 @@ public class Player{
 
     private void revive(Player[][] myTeam){
         PlayerPosition targetPlayerPosition = findTargetablePlayers(TargetingMode.revive_teamLowestHP);
-        int i = targetPlayerPosition.getI(), j = targetPlayerPosition.getJ();
-        if(i == -1 && j == -1){
+        if(targetPlayerPosition == null){
             return;
         }
+        int i = targetPlayerPosition.getI(), j = targetPlayerPosition.getJ();
+
+        // Revives and heals target by 30% of target's max hp
         myTeam[i][j].currentHP += 0.30 * myTeam[i][j].maxHP;
 
         //For debugging purposes only
@@ -644,13 +669,25 @@ public class Player{
                                        + " {" + type.name() + "} " + " uses fortune cookies to " + Arena.team_toString(this.getOpponentTeam()));
         }
 
-        PlayerPosition[] playerPositions = findMultipleTargetablePlayers(TargetingMode.selectAllTarget);
+        ArrayList<PlayerPosition> playerPositionArrayList = findMultipleTargetablePlayers(TargetingMode.selectAllTarget);
+
+        if(StudentTester.debug_TargetSearching){
+            for(i = 0; i < playerPositionArrayList.size(); i++){
+                System.out.println("#" + i + ": " + playerPositionArrayList.get(i).toString());
+            }
+            System.out.println("playerPositionArrayList.size() = " + playerPositionArrayList.size());
+        }
+
         for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
             for(j = 0; j < arena.getNumRowPlayers(); j++){
-                if(playerPositions[countPlayerPosition].getI() == i
-                        && playerPositions[countPlayerPosition].getJ() == j && !theirTeam[i][j].isSleeping){
+                if(playerPositionArrayList.get(countPlayerPosition).getI() == i
+                        && playerPositionArrayList.get(countPlayerPosition).getJ() == j && !theirTeam[i][j].isSleeping){
                     theirTeam[i][j].turnsSinceStartSleeping = 0;
                     theirTeam[i][j].isSleeping = true;
+                    countPlayerPosition++;
+                    if(countPlayerPosition == playerPositionArrayList.size()){
+                        break;
+                    }
                 }
             }
         }
