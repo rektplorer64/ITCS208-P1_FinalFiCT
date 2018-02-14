@@ -3,6 +3,9 @@ public class PlayerPosition{
     private int i;
     private int j;
 
+    /**
+     * The Default Constructor for PlayerPosition
+     */
     public PlayerPosition(){
         this.i = 0;
         this.j = 0;
@@ -44,6 +47,7 @@ public class PlayerPosition{
 
     /**
      * Set the Position in a Row that player is in
+     *
      * @param j New value for Position in a Row
      */
     public void setJ(int j){
@@ -53,9 +57,11 @@ public class PlayerPosition{
     /**
      * Compare 2 PlayerPosition if one is lower than another by
      * Comparing Row
-     *      - If row (i) is lower, then return true
-     *      - If row is the same, then compare position (j)
+     * - If row (i) is lower, then return true
+     * - If row is the same, then compare position (j)
+     *
      * @param otherPlayerPosition the comparision target
+     *
      * @return true If this position is smaller
      */
     public boolean isLowerThan(PlayerPosition otherPlayerPosition){

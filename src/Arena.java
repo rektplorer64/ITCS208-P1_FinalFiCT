@@ -7,9 +7,52 @@ import java.util.Arrays;
 
 public class Arena{
 
-    public enum Row{Front, Back};    //enum for specifying the front or back row
+    /**
+     * Returns String name of Team.
+     * Called by Debugging methods.
+     *
+     * @param team which you wants to know the string of.
+     *
+     * @return the string with "Team" before the team name.
+     */
+    public static String team_toString(Team team){
+        if(team == Team.A){
+            return "Team A";
+        }else{
+            return "Team B";
+        }
+    }
 
-    public enum Team{A, B};        //enum for specifying team A or B
+    ;    //enum for specifying the front or back row
+
+    /**
+     * This method will give the current Front Row of a team
+     *
+     * @param teamPlayers an array of players of a team.
+     *
+     * @return 0 for Front Row and 1 for Back Row
+     */
+    public int getFrontRow(Player[][] teamPlayers){
+        int i, j, firstRowCountAlive = 0;
+
+        //Counting Alive Player on the Front Row
+        for(i = 0; i < 1; i++){
+            for(j = 0; j < Arena.numRowPlayers; j++){
+                if(teamPlayers[0][j].isAlive()){
+                    firstRowCountAlive++;
+                }
+            }
+        }
+
+        //If there are alive players on the front, returns 0. Otherwise, returns as 1.
+        if(firstRowCountAlive > 0){
+            return 0;       /* Front Row */
+        }else{
+            return 1;       /* Back Row */
+        }
+    }
+
+    ;        //enum for specifying team A or B
 
     public static final int NUMBER_OF_ROWS = 2;
     public static int numRowPlayers;
@@ -89,24 +132,6 @@ public class Arena{
         return null;
     }
 
-    public int getFrontRow(Player[][] teamPlayers){
-        int i, j;
-        int firstRowCountAlive = 0;
-        for(i = 0; i < 1; i++){
-            for(j = 0; j < Arena.numRowPlayers; j++){
-                if(teamPlayers[0][j].isAlive()){
-                    firstRowCountAlive++;
-                }
-            }
-        }
-
-        if(firstRowCountAlive > 0){
-            return 0;
-        }else{
-            return 1;
-        }
-    }
-
     /**
      * Return the team (either teamA or teamB) whose number of alive players is higher than the other.
      * <p>
@@ -119,20 +144,22 @@ public class Arena{
      */
     public Player[][] getWinningTeam(){
 
-        int row, player;
-        int A_countDead = 0;
-        int B_countDead = 0;
+        int row, player, A_countDead = 0, B_countDead = 0;
 
+        //If Number of Round equals to Max Possible Number of Round, check both team for sum of current HP.
+        //The team with higher sum will win.
         if(numRounds == MAX_ROUNDS){
             if(getSumHP(teamA) > getSumHP(teamB)){
                 return teamA;
             }else if(getSumHP(teamA) < getSumHP(teamB)){
                 return teamB;
             }else{
+                //Basically in case of a draw
                 return null;
             }
         }
 
+        //Check Number of dead players on both sides
         for(row = 0; row < NUMBER_OF_ROWS; row++){
             for(player = 0; player < numRowPlayers; player++){
                 if(!teamA[row][player].isAlive()){
@@ -162,6 +189,83 @@ public class Arena{
             return null;
         }
         return null;
+    }
+
+    /**
+     * This method simulates the battle between teamA and teamB. The method should have a loop that signifies
+     * a round of the battle. In each round, each player in teamA invokes the method takeAction(). The players'
+     * turns are ordered by its position in the team. Once all the players in teamA have invoked takeAction(),
+     * not it is teamB's turn to do the same.
+     * <p>
+     * The battle terminates if one of the following two conditions is met:
+     * <p>
+     * 1. All the players in a team has been eliminated.
+     * 2. The number of rounds exceeds MAX_ROUNDS
+     * <p>
+     * After the battle terminates, report the winning team, which is determined by getWinningTeam().
+     */
+    public void startBattle(){
+        int row, player, round;
+
+        //This most outer loop is the loop for each Round
+        for(round = 1; round <= MAX_ROUNDS; round++){
+            numRounds = round;
+
+            if(StudentTester.debug_ActionMessages){     /* For Debugging Purposes only */
+                //Shows current round
+                System.out.println("@ Round " + round);
+            }
+
+            //This loop and nest loop will cycle through every players in Team A
+            for(row = 0; row < NUMBER_OF_ROWS; row++){
+                for(player = 0; player < numRowPlayers; player++){
+                    //Dead player or Player with sleeping buff will be skipped
+                    if(!teamA[row][player].isAlive() || (teamA[row][player].isSleeping()
+                            && teamA[row][player].getTurnsSinceStartSleeping() == 0)){
+                        if(teamA[row][player].isSleeping()){
+                            teamA[row][player].setTurnsSinceStartSleeping(1);
+                        }
+                        //System.out.println("Skip: " + teamA[row][player].toStringDebug("", teamA[row][player]));
+                        continue;
+                    }
+
+                    if(teamA[row][player].getTurnsSinceStartSleeping() == 1){
+                        teamA[row][player].setSleeping(false);
+                    }
+                    teamA[row][player].takeAction(this);        /* The player perform an action */
+                }
+            }
+
+            //This loop and nest loop will cycle through every players in Team B
+            for(row = 0; row < NUMBER_OF_ROWS; row++){
+                for(player = 0; player < numRowPlayers; player++){
+                    //Dead player or Player with sleeping buff will be skipped
+                    if(!teamB[row][player].isAlive() || (teamB[row][player].isSleeping()
+                            && teamB[row][player].getTurnsSinceStartSleeping() == 0)){
+                        if(teamB[row][player].isSleeping()){
+                            teamB[row][player].setTurnsSinceStartSleeping(1);
+                        }
+                        //System.out.println("Skip: " + teamB[row][player].toStringDebug("", teamB[row][player]));
+                        continue;
+                    }
+
+                    if(teamB[row][player].getTurnsSinceStartSleeping() == 1){
+                        teamB[row][player].setSleeping(false);
+                    }
+                    teamB[row][player].takeAction(this);        /* The player perform an action */
+                }
+            }
+            Arena.displayArea(this, true);      /* Reports each round */
+            logAfterEachRound();                            /* Logs each round */
+
+            //If there are a winning team, break the loop, thus end game.
+            if(getWinningTeam() != null){
+                break;
+            }
+        }
+
+        System.out.println("@@@ Team " + identifyTeam(getWinningTeam()).name() + " won.");
+
     }
 
 
@@ -209,73 +313,18 @@ public class Arena{
     }
 
     /**
-     * This method simulates the battle between teamA and teamB. The method should have a loop that signifies
-     * a round of the battle. In each round, each player in teamA invokes the method takeAction(). The players'
-     * turns are ordered by its position in the team. Once all the players in teamA have invoked takeAction(),
-     * not it is teamB's turn to do the same.
-     * <p>
-     * The battle terminates if one of the following two conditions is met:
-     * <p>
-     * 1. All the players in a team has been eliminated.
-     * 2. The number of rounds exceeds MAX_ROUNDS
-     * <p>
-     * After the battle terminates, report the winning team, which is determined by getWinningTeam().
+     * By giving an array of player, this function can identify the team of the player array.
+     *
+     * @param teamArray target Team which you want to check.
+     *
+     * @return whether it is Team A or Team B
      */
-    public void startBattle(){
-        //INSERT YOUR CODE HERE
-        int row, player;
-        for(int round = 1; round <= MAX_ROUNDS; round++){
-            numRounds = round;
-
-            if(StudentTester.debug_ActionMessages){
-                System.out.println("@ Round " + round);
-            }
-
-            for(row = 0; row < NUMBER_OF_ROWS; row++){
-                for(player = 0; player < numRowPlayers; player++){
-                    if(!teamA[row][player].isAlive() || (teamA[row][player].isSleeping()
-                            && teamA[row][player].getTurnsSinceStartSleeping() == 0)){
-                        if(teamA[row][player].isSleeping()){
-                            teamA[row][player].setTurnsSinceStartSleeping(1);
-                        }
-                        //System.out.println("Skip: " + teamA[row][player].toStringDebug("", teamA[row][player]));
-                        continue;
-                    }
-
-                    if(teamA[row][player].getTurnsSinceStartSleeping() == 1){
-                        teamA[row][player].setSleeping(false);
-                    }
-                    teamA[row][player].takeAction(this);
-                }
-            }
-
-            for(row = 0; row < NUMBER_OF_ROWS; row++){
-                for(player = 0; player < numRowPlayers; player++){
-                    if(!teamB[row][player].isAlive() || (teamB[row][player].isSleeping()
-                            && teamB[row][player].getTurnsSinceStartSleeping() == 0)){
-                        if(teamB[row][player].isSleeping()){
-                            teamB[row][player].setTurnsSinceStartSleeping(1);
-                        }
-                        //System.out.println("Skip: " + teamB[row][player].toStringDebug("", teamB[row][player]));
-                        continue;
-                    }
-
-                    if(teamB[row][player].getTurnsSinceStartSleeping() == 1){
-                        teamB[row][player].setSleeping(false);
-                    }
-                    teamB[row][player].takeAction(this);
-                }
-            }
-
-            Arena.displayArea(this, true);
-            logAfterEachRound();
-            if(getWinningTeam() != null){
-                break;
-            }
+    private Team identifyTeam(Player[][] teamArray){
+        if(teamArray == teamA){
+            return Team.A;
+        }else{
+            return Team.B;
         }
-
-        System.out.println("@@@ Team " + identifyTeam(getWinningTeam()).name() + " won.");
-
     }
 
     /**
@@ -290,7 +339,6 @@ public class Arena{
      * @return whether all player of both team meet the requirement
      */
     public boolean validatePlayers(){
-        //INSERT YOUR CODE HERE
         int i, j;
         int A_countMembers;
         int A_countHealer = 0, A_countTanks = 0, A_countSamurais = 0, A_countBlackMages = 0, A_countPhoenixes = 0, A_countCherry = 0;
@@ -379,21 +427,9 @@ public class Arena{
         System.out.print(str.toString());
     }
 
-    private Team identifyTeam(Player[][] team){
-        if(team == teamA){
-            return Team.A;
-        }else{
-            return Team.B;
-        }
-    }
+    public enum Row{Front, Back}
 
-    public static String team_toString(Team team){
-        if(team == Team.A){
-            return "Team A";
-        }else{
-            return "Team B";
-        }
-    }
+    public enum Team{A, B}
 
     /**
      * This method writes a log (as round number, sum of HP of teamA, and sum of HP of teamB) into the log file.
