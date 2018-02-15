@@ -4,10 +4,13 @@ public class Player{
 
     public enum TargetingMode{attack_LowestHP, heal_teamLowestHP, selectAllTarget, revive_teamLowestHP}
 
+    public enum PlayerType{Healer, Tank, Samurai, BlackMage, Phoenix, Cherry}
+
     private final int MIN_HP_VALUE = 6000;        //This variable is used in finding lowest number
 
     private static Arena arena;                   //Specifies the arena which this player joined in.
     private Arena.Team team;                      //Specifies the team which this player joined in.
+
     /* Must have fields for every players */
     private PlayerPosition playerPosition;        //Position of the player
     private PlayerType type;                      //Type of this player. Can be one of either Healer, Tank, Samurai, BlackMage, or Phoenix
@@ -19,18 +22,10 @@ public class Player{
     private int numSpecialTurns;                  //Number of Special Turns of this player
 
     private int current_Turn_In_A_Row;            //Number of Special Turns of this player
+
     /* Status */
     private boolean isTaunting;                   //Priority of this player to being attacked
     private boolean isSleeping;                   //Sleep Status of this player
-
-    /**
-     * This method returns getTurnsSinceStartSleeping of this player.
-     *
-     * @return TurnsSinceStartSleeping
-     */
-    public int getTurnsSinceStartSleeping(){
-        return turnsSinceStartSleeping;
-    }
 
     private int turnsSinceStartSleeping = 0;
 
@@ -45,12 +40,12 @@ public class Player{
      * @param _type The type of Player Character
      */
     Player(PlayerType _type, Arena.Team team, Arena _arena, PlayerPosition playerPosition){
-        //INSERT YOUR CODE HERE
         this.playerPosition = playerPosition;
         arena = _arena;
         this.type = _type;
         this.team = team;
 
+        /* Status */
         this.isSleeping = false;
         this.isTaunting = false;
         this.cursedBy = null;
@@ -62,21 +57,18 @@ public class Player{
         switch(_type){
             case Healer:{
                 maxHP = 4790;
-                currentHP = 4790;
                 atk = 238;
                 numSpecialTurns = 4;
                 break;
             }
             case Tank:{
                 maxHP = 5340;
-                currentHP = 5340;
                 atk = 255;
                 numSpecialTurns = 4;
                 break;
             }
             case Samurai:{
                 maxHP = 4005;
-                currentHP = 4005;
                 atk = 368;
                 numSpecialTurns = 3;
                 break;
@@ -84,7 +76,6 @@ public class Player{
 
             case BlackMage:{
                 maxHP = 4175;
-                currentHP = 4175;
                 atk = 303;
                 numSpecialTurns = 4;
                 break;
@@ -92,7 +83,6 @@ public class Player{
 
             case Phoenix:{
                 maxHP = 4175;
-                currentHP = 4175;
                 atk = 209;
                 numSpecialTurns = 8;
                 break;
@@ -100,12 +90,12 @@ public class Player{
 
             case Cherry:{
                 maxHP = 3560;
-                currentHP = 3560;
                 atk = 198;
                 numSpecialTurns = 4;
                 break;
             }
         }
+        currentHP = maxHP;
     }
 
     /**
@@ -123,7 +113,6 @@ public class Player{
      * @return type or class of this player
      */
     Player.PlayerType getType(){
-        //INSERT YOUR CODE HERE
         return type;
     }
 
@@ -134,6 +123,15 @@ public class Player{
      */
     public double getMaxHP(){
         return maxHP;
+    }
+
+    /**
+     * This method returns getTurnsSinceStartSleeping of this player.
+     *
+     * @return TurnsSinceStartSleeping
+     */
+    public int getTurnsSinceStartSleeping(){
+        return turnsSinceStartSleeping;
     }
 
     /**
@@ -442,6 +440,46 @@ public class Player{
     }
 
     /**
+     * This method will search for the Lowest HP in an Array
+     *
+     * @param targetingMode           Depending on which action calls this function
+     * @param playerPositionArrayList target ArrayList for modifying
+     * @param targetTeamPlayers       2-Dimensional Array of Target players for searching
+     * @param minValue                Minimum Value for searching
+     */
+    private void searchLowestHPinArray(TargetingMode targetingMode, ArrayList<PlayerPosition> playerPositionArrayList, Player[][] targetTeamPlayers, double minValue){
+        int i, j;
+        if(targetingMode == TargetingMode.attack_LowestHP){
+            i = arena.getFrontRow(targetTeamPlayers);
+            for(j = 0; j < arena.getNumRowPlayers(); j++){
+                if(targetTeamPlayers[i][j].isAlive() && targetTeamPlayers[i][j].currentHP == minValue){
+                    playerPositionArrayList.add(new PlayerPosition(i, j));
+
+                    if(StudentTester.debug_TargetSearching){     /* For Debugging Purposes only */
+                        System.out.println(playerPositionArrayList.get(playerPositionArrayList.size() - 1).toString());
+                    }
+                }
+            }
+        }else if(targetingMode == TargetingMode.heal_teamLowestHP){
+            for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
+                for(j = 0; j < arena.getNumRowPlayers(); j++){
+                    if(targetTeamPlayers[i][j].currentHP == minValue){
+                        playerPositionArrayList.add(new PlayerPosition(i, j));
+                    }
+                }
+            }
+        }else if(targetingMode == TargetingMode.revive_teamLowestHP){
+            for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
+                for(j = 0; j < arena.getNumRowPlayers(); j++){
+                    if(!targetTeamPlayers[i][j].isAlive()){
+                        playerPositionArrayList.add(new PlayerPosition(i, j));
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * This method is called by Arena when it is this player's turn to take an action.
      * By default, the player simply just "attack(target)". However, once this player has
      * fought for "numSpecialTurns" rounds, this player must perform "useSpecialAbility(myTeam, theirTeam)"
@@ -731,46 +769,4 @@ public class Player{
         return "# " + getPlayerTeam().name() + playerPosition.toReadableString() + " {" + type.name() + "} "
                 + move + " " + target.getPlayerTeam().name() + target.playerPosition.toReadableString() + " {" + target.type.name() + "}";
     }
-
-    /**
-     * This method will search for the Lowest HP in an Array
-     *
-     * @param targetingMode           Depending on which action calls this function
-     * @param playerPositionArrayList target ArrayList for modifying
-     * @param targetTeamPlayers       2-Dimensional Array of Target players for searching
-     * @param minValue                Minimum Value for searching
-     */
-    private void searchLowestHPinArray(TargetingMode targetingMode, ArrayList<PlayerPosition> playerPositionArrayList, Player[][] targetTeamPlayers, double minValue){
-        int i, j;
-        if(targetingMode == TargetingMode.attack_LowestHP){
-            i = arena.getFrontRow(targetTeamPlayers);
-            for(j = 0; j < arena.getNumRowPlayers(); j++){
-                if(targetTeamPlayers[i][j].isAlive() && targetTeamPlayers[i][j].currentHP == minValue){
-                    playerPositionArrayList.add(new PlayerPosition(i, j));
-
-                    if(StudentTester.debug_TargetSearching){     /* For Debugging Purposes only */
-                        System.out.println(playerPositionArrayList.get(playerPositionArrayList.size() - 1).toString());
-                    }
-                }
-            }
-        }else if(targetingMode == TargetingMode.heal_teamLowestHP){
-            for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
-                for(j = 0; j < arena.getNumRowPlayers(); j++){
-                    if(targetTeamPlayers[i][j].currentHP == minValue){
-                        playerPositionArrayList.add(new PlayerPosition(i, j));
-                    }
-                }
-            }
-        }else if(targetingMode == TargetingMode.revive_teamLowestHP){
-            for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
-                for(j = 0; j < arena.getNumRowPlayers(); j++){
-                    if(!targetTeamPlayers[i][j].isAlive()){
-                        playerPositionArrayList.add(new PlayerPosition(i, j));
-                    }
-                }
-            }
-        }
-    }
-
-    public enum PlayerType{Healer, Tank, Samurai, BlackMage, Phoenix, Cherry}
 }

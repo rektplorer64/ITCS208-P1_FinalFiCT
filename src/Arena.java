@@ -7,25 +7,41 @@ import java.util.Arrays;
 
 public class Arena{
 
+    public enum Team{A, B}      //enum for specifying team A or B
+
+    public enum Row{Front, Back}    //enum for specifying the front or back row
+
     public static final int NUMBER_OF_ROWS = 2;     //Number of Rows, as stated in the rules
     private static final int MAX_ROUNDS = 100;    //Max number of turn
     private static final int MAX_EACH_TYPE = 3;    //Max number of players of each type, in each team.
     private static int numRowPlayers;
 
+    private Player[][] teamA = null;    //two dimensional array representing the players of Team A
+    private Player[][] teamB = null;    //two dimensional array representing the players of Team B
+
+    private final Path logFile = Paths.get("battle_log.txt");
+
+    private int numRounds = 0;    //keep track of the number of rounds so far
+
     /**
-     * Returns String name of Team.
-     * Called by Debugging methods.
+     * Constructor.
      *
-     * @param team which you wants to know the string of.
-     *
-     * @return the string with "Team" before the team name.
+     * @param _numRowPlayers is the number of player in each row.
      */
-    public static String team_toString(Team team){
-        if(team == Team.A){
-            return "Team A";
-        }else{
-            return "Team B";
+    public Arena(int _numRowPlayers){
+        numRowPlayers = _numRowPlayers;
+        teamA = new Player[NUMBER_OF_ROWS][_numRowPlayers];
+        teamB = new Player[NUMBER_OF_ROWS][_numRowPlayers];
+
+        ////Keep this block of code. You need it for initialize the log file.
+        ////(You will learn how to deal with files later)
+        try{
+            Files.deleteIfExists(logFile);
+        }catch(IOException e){
+            e.printStackTrace();
         }
+        /////////////////////////////////////////
+
     }
 
     /**
@@ -53,31 +69,80 @@ public class Arena{
         }
     }
 
-    private Player[][] teamA = null;    //two dimensional array representing the players of Team A
-    private Player[][] teamB = null;    //two dimensional array representing the players of Team B
-
-    private final Path logFile = Paths.get("battle_log.txt");
-
-    private int numRounds = 0;    //keep track of the number of rounds so far
-
     /**
-     * Constructor.
-     *
-     * @param _numRowPlayers is the number of player in each row.
+     * This method simulates the battle between teamA and teamB. The method should have a loop that signifies
+     * a round of the battle. In each round, each player in teamA invokes the method takeAction(). The players'
+     * turns are ordered by its position in the team. Once all the players in teamA have invoked takeAction(),
+     * not it is teamB's turn to do the same.
+     * <p>
+     * The battle terminates if one of the following two conditions is met:
+     * <p>
+     * 1. All the players in a team has been eliminated.
+     * 2. The number of rounds exceeds MAX_ROUNDS
+     * <p>
+     * After the battle terminates, report the winning team, which is determined by getWinningTeam().
      */
-    public Arena(int _numRowPlayers){
-        numRowPlayers = _numRowPlayers;
-        teamA = new Player[NUMBER_OF_ROWS][_numRowPlayers];
-        teamB = new Player[NUMBER_OF_ROWS][_numRowPlayers];
+    public void startBattle(){
+        int row, player, round;
 
-        ////Keep this block of code. You need it for initialize the log file.
-        ////(You will learn how to deal with files later)
-        try{
-            Files.deleteIfExists(logFile);
-        }catch(IOException e){
-            e.printStackTrace();
+        //This most outer loop is the loop for each Round
+        for(round = 1; round <= MAX_ROUNDS; round++){
+            numRounds = round;
+
+            if(StudentTester.debug_ActionMessages){     /* For Debugging Purposes only */
+                //Shows current round
+                System.out.println("@ Round " + round);
+            }
+
+            //This loop and nest loop will cycle through every players in Team A
+            for(row = 0; row < NUMBER_OF_ROWS; row++){
+                for(player = 0; player < numRowPlayers; player++){
+                    //Dead player or Player with sleeping buff will be skipped
+                    if(!teamA[row][player].isAlive() || (teamA[row][player].isSleeping()
+                            && teamA[row][player].getTurnsSinceStartSleeping() == 0)){
+                        if(teamA[row][player].isSleeping()){
+                            teamA[row][player].setTurnsSinceStartSleeping(1);
+                        }
+                        //System.out.println("Skip: " + teamA[row][player].toStringDebug("", teamA[row][player]));
+                        continue;
+                    }
+
+                    if(teamA[row][player].getTurnsSinceStartSleeping() == 1){
+                        teamA[row][player].setSleeping(false);
+                    }
+                    teamA[row][player].takeAction(this);        /* The player perform an action */
+                }
+            }
+
+            //This loop and nest loop will cycle through every players in Team B
+            for(row = 0; row < NUMBER_OF_ROWS; row++){
+                for(player = 0; player < numRowPlayers; player++){
+                    //Dead player or Player with sleeping buff will be skipped
+                    if(!teamB[row][player].isAlive() || (teamB[row][player].isSleeping()
+                            && teamB[row][player].getTurnsSinceStartSleeping() == 0)){
+                        if(teamB[row][player].isSleeping()){
+                            teamB[row][player].setTurnsSinceStartSleeping(1);
+                        }
+                        //System.out.println("Skip: " + teamB[row][player].toStringDebug("", teamB[row][player]));
+                        continue;
+                    }
+
+                    if(teamB[row][player].getTurnsSinceStartSleeping() == 1){
+                        teamB[row][player].setSleeping(false);
+                    }
+                    teamB[row][player].takeAction(this);        /* The player perform an action */
+                }
+            }
+            Arena.displayArea(this, true);      /* Reports each round */
+            logAfterEachRound();                            /* Logs each round */
+
+            //If there are a winning team, break the loop, thus end game.
+            if(getWinningTeam() != null){
+                break;
+            }
         }
-        /////////////////////////////////////////
+
+        System.out.println("@@@ Team " + identifyTeam(getWinningTeam()).name() + " won.");
 
     }
 
@@ -167,7 +232,6 @@ public class Arena{
      * @return whether the player is in that team or not
      */
     public boolean isMemberOf(Player player, Team team){
-        //INSERT YOUR CODE HERE
         return player.getPlayerTeam() == team;
     }
 
@@ -316,83 +380,19 @@ public class Arena{
         return true;
     }
 
-    public enum Row{Front, Back}    //enum for specifying the front or back row
-
     /**
-     * This method simulates the battle between teamA and teamB. The method should have a loop that signifies
-     * a round of the battle. In each round, each player in teamA invokes the method takeAction(). The players'
-     * turns are ordered by its position in the team. Once all the players in teamA have invoked takeAction(),
-     * not it is teamB's turn to do the same.
-     * <p>
-     * The battle terminates if one of the following two conditions is met:
-     * <p>
-     * 1. All the players in a team has been eliminated.
-     * 2. The number of rounds exceeds MAX_ROUNDS
-     * <p>
-     * After the battle terminates, report the winning team, which is determined by getWinningTeam().
+     * By giving an array of player, this function can identify the team of the player array.
+     *
+     * @param teamArray target Team which you want to check.
+     *
+     * @return whether it is Team A or Team B
      */
-    public void startBattle(){
-        int row, player, round;
-
-        //This most outer loop is the loop for each Round
-        for(round = 1; round <= MAX_ROUNDS; round++){
-            numRounds = round;
-
-            if(StudentTester.debug_ActionMessages){     /* For Debugging Purposes only */
-                //Shows current round
-                System.out.println("@ Round " + round);
-            }
-
-            //This loop and nest loop will cycle through every players in Team A
-            for(row = 0; row < NUMBER_OF_ROWS; row++){
-                for(player = 0; player < numRowPlayers; player++){
-                    //Dead player or Player with sleeping buff will be skipped
-                    if(!teamA[row][player].isAlive() || (teamA[row][player].isSleeping()
-                            && teamA[row][player].getTurnsSinceStartSleeping() == 0)){
-                        if(teamA[row][player].isSleeping()){
-                            teamA[row][player].setTurnsSinceStartSleeping(1);
-                        }
-                        //System.out.println("Skip: " + teamA[row][player].toStringDebug("", teamA[row][player]));
-                        continue;
-                    }
-
-                    if(teamA[row][player].getTurnsSinceStartSleeping() == 1){
-                        teamA[row][player].setSleeping(false);
-                    }
-                    teamA[row][player].takeAction(this);        /* The player perform an action */
-                }
-            }
-
-            //This loop and nest loop will cycle through every players in Team B
-            for(row = 0; row < NUMBER_OF_ROWS; row++){
-                for(player = 0; player < numRowPlayers; player++){
-                    //Dead player or Player with sleeping buff will be skipped
-                    if(!teamB[row][player].isAlive() || (teamB[row][player].isSleeping()
-                            && teamB[row][player].getTurnsSinceStartSleeping() == 0)){
-                        if(teamB[row][player].isSleeping()){
-                            teamB[row][player].setTurnsSinceStartSleeping(1);
-                        }
-                        //System.out.println("Skip: " + teamB[row][player].toStringDebug("", teamB[row][player]));
-                        continue;
-                    }
-
-                    if(teamB[row][player].getTurnsSinceStartSleeping() == 1){
-                        teamB[row][player].setSleeping(false);
-                    }
-                    teamB[row][player].takeAction(this);        /* The player perform an action */
-                }
-            }
-            Arena.displayArea(this, true);      /* Reports each round */
-            logAfterEachRound();                            /* Logs each round */
-
-            //If there are a winning team, break the loop, thus end game.
-            if(getWinningTeam() != null){
-                break;
-            }
+    private Team identifyTeam(Player[][] teamArray){
+        if(teamArray == teamA){
+            return Team.A;
+        }else{
+            return Team.B;
         }
-
-        System.out.println("@@@ Team " + identifyTeam(getWinningTeam()).name() + " won.");
-
     }
 
 
@@ -413,23 +413,6 @@ public class Arena{
         }
         return sumHP;
     }
-
-    /**
-     * By giving an array of player, this function can identify the team of the player array.
-     *
-     * @param teamArray target Team which you want to check.
-     *
-     * @return whether it is Team A or Team B
-     */
-    private Team identifyTeam(Player[][] teamArray){
-        if(teamArray == teamA){
-            return Team.A;
-        }else{
-            return Team.B;
-        }
-    }
-
-    public enum Team{A, B}      //enum for specifying team A or B
 
     /**
      * This method displays the current area state, and is already implemented for you.
@@ -474,5 +457,21 @@ public class Arena{
             e.printStackTrace();
         }
 
+    }
+
+    /**
+     * Returns String name of Team.
+     * Called by Debugging methods.
+     *
+     * @param team which you wants to know the string of.
+     *
+     * @return the string with "Team" before the team name.
+     */
+    public static String team_toString(Team team){
+        if(team == Team.A){
+            return "Team A";
+        }else{
+            return "Team B";
+        }
     }
 }

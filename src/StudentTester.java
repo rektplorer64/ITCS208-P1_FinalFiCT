@@ -114,6 +114,7 @@ public class StudentTester {
 		 * so that your team wins the battle against the instructors' team (Team B).
 		 */
 
+
         //////////////////// CONFIGURE YOUR TEAM HERE ////////////////////////////////////
         //Add players to the front row of Team A
         battleField.addPlayer(Arena.Team.A, Player.PlayerType.Samurai, Arena.Row.Front, 1);
@@ -127,9 +128,8 @@ public class StudentTester {
         battleField.addPlayer(Arena.Team.A, Player.PlayerType.Phoenix, Arena.Row.Back, 2);
         battleField.addPlayer(Arena.Team.A, Player.PlayerType.Cherry, Arena.Row.Back, 3);
         battleField.addPlayer(Arena.Team.A, Player.PlayerType.Phoenix, Arena.Row.Back, 4);
-        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Cherry, Arena.Row.Back, 5);
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Healer, Arena.Row.Back, 5);
         //////////////////////////////////////////////////////////////////////////////////
-
 
 
         ///////////////////// INSTRUCTORS' TEAM //////////////////////////////////////
