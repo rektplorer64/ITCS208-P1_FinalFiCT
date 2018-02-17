@@ -1,6 +1,12 @@
 
 public class StudentTester {
 
+    public static final boolean debug_TargetSearching = false;        /* For debugging purposes only, this variable
+                                                                         controls the visibility of target searching */
+
+    public static final boolean debug_ActionMessages = true;         /* For debugging purposes only, this variable
+                                                                         controls the visibility of battle log */
+
     public static void simpleCase()
     {
         //Instantiate an arena
@@ -108,22 +114,22 @@ public class StudentTester {
 		 * so that your team wins the battle against the instructors' team (Team B).
 		 */
 
+
         //////////////////// CONFIGURE YOUR TEAM HERE ////////////////////////////////////
         //Add players to the front row of Team A
-		/*battleField.addPlayer(Arena.Team.A, Player.PlayerType.???, Arena.Row.Front, 1);
-		battleField.addPlayer(Arena.Team.A, Player.PlayerType.???, Arena.Row.Front, 2);
-		battleField.addPlayer(Arena.Team.A, Player.PlayerType.???, Arena.Row.Front, 3);
-		battleField.addPlayer(Arena.Team.A, Player.PlayerType.???, Arena.Row.Front, 4);
-		battleField.addPlayer(Arena.Team.A, Player.PlayerType.???, Arena.Row.Front, 5);
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Samurai, Arena.Row.Front, 1);
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Tank, Arena.Row.Front, 2);
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Samurai, Arena.Row.Front, 3);
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Tank, Arena.Row.Front, 4);
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Samurai, Arena.Row.Front, 5);
 
 		//Add players to the Back row of Team A
-		battleField.addPlayer(Arena.Team.A, Player.PlayerType.???, Arena.Row.Back, 1);
-		battleField.addPlayer(Arena.Team.A, Player.PlayerType.???, Arena.Row.Back, 2);
-		battleField.addPlayer(Arena.Team.A, Player.PlayerType.???, Arena.Row.Back, 3);
-		battleField.addPlayer(Arena.Team.A, Player.PlayerType.???, Arena.Row.Back, 4);
-		battleField.addPlayer(Arena.Team.A, Player.PlayerType.???, Arena.Row.Back, 5);*/
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Healer, Arena.Row.Back, 1);
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Phoenix, Arena.Row.Back, 2);
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Cherry, Arena.Row.Back, 3);
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Phoenix, Arena.Row.Back, 4);
+        battleField.addPlayer(Arena.Team.A, Player.PlayerType.Healer, Arena.Row.Back, 5);
         //////////////////////////////////////////////////////////////////////////////////
-
 
 
         ///////////////////// INSTRUCTORS' TEAM //////////////////////////////////////

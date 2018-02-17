@@ -4,6 +4,14 @@ public class PlayerPosition{
     private int j;
 
     /**
+     * The Default Constructor for PlayerPosition
+     */
+    public PlayerPosition(){
+        this.i = 0;
+        this.j = 0;
+    }
+
+    /**
      * The Constructor for PlayerPosition
      *
      * @param i A position in Array of Player (Player[i][]), known as Row
@@ -22,6 +30,13 @@ public class PlayerPosition{
     }
 
     /**
+     * @return Get the Position that player is in
+     */
+    public int getJ(){
+        return j;
+    }
+
+    /**
      * Set the Row that player is in
      *
      * @param i New value for Row
@@ -31,14 +46,8 @@ public class PlayerPosition{
     }
 
     /**
-     * @return Get the Position that player is in
-     */
-    public int getJ(){
-        return j;
-    }
-
-    /**
      * Set the Position in a Row that player is in
+     *
      * @param j New value for Position in a Row
      */
     public void setJ(int j){
@@ -48,9 +57,11 @@ public class PlayerPosition{
     /**
      * Compare 2 PlayerPosition if one is lower than another by
      * Comparing Row
-     *      - If row (i) is lower, then return true
-     *      - If row is the same, then compare position (j)
+     * - If row (i) is lower, then return true
+     * - If row is the same, then compare position (j)
+     *
      * @param otherPlayerPosition the comparision target
+     *
      * @return true If this position is smaller
      */
     public boolean isLowerThan(PlayerPosition otherPlayerPosition){
@@ -67,8 +78,23 @@ public class PlayerPosition{
         }
     }
 
+    /**
+     * Process current i j to a string
+     *
+     * @return order pair of i and j
+     */
     @Override
     public String toString(){
         return "(" + getI() + ", " + getJ() + ")";
+    }
+
+    public String toReadableString(){
+        String row;
+        if(getI() == 0){
+            row = "Front";
+        }else{
+            row = "Back";
+        }
+        return "[" + row + "][" + (getJ() + 1) + "]";
     }
 }
