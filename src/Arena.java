@@ -95,7 +95,7 @@ public class Arena{
         for(round = 1; round <= MAX_ROUNDS; round++){
             numRounds = round;
 
-            if(StudentTester.debug_ActionMessages){     /* For Debugging Purposes only */
+            if(Player.debug_ActionMessages){     /* For Debugging Purposes only */
                 //Shows current round
                 System.out.println("@ Round " + round);
             }

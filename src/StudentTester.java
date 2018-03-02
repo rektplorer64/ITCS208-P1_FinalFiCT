@@ -6,12 +6,6 @@
 
 public class StudentTester {
 
-    public static final boolean debug_TargetSearching = false;        /* For debugging purposes only, this variable
-                                                                         controls the visibility of target searching */
-
-    public static final boolean debug_ActionMessages = true;         /* For debugging purposes only, this variable
-                                                                         controls the visibility of battle log */
-
     public static void simpleCase(){
         //Instantiate an arena
         Arena battleField = new Arena(2);

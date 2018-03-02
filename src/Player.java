@@ -8,9 +8,15 @@ import java.util.ArrayList;
 
 public class Player{
 
-    public enum TargetingMode{attack_LowestHP, heal_teamLowestHP, selectAllTarget, revive_teamLowestHP}
+    private static final boolean debug_TargetSearching = false;        /* For debugging purposes only, this variable
+                                                                         controls the visibility of target searching */
+
+    public static final boolean debug_ActionMessages = true;         /* For debugging purposes only, this variable
+                                                                         controls the visibility of battle log */
 
     public enum PlayerType{Healer, Tank, Samurai, BlackMage, Phoenix, Cherry}
+
+    public enum TargetingMode{attack_LowestHP, heal_teamLowestHP, selectAllTarget, revive_teamLowestHP}
 
     private final int MIN_HP_VALUE = 6000;        //This variable is used in finding lowest number
 
@@ -105,21 +111,21 @@ public class Player{
     }
 
     /**
-     * Returns the current HP of this player
-     *
-     * @return currentHP of this player
-     */
-    public double getCurrentHP(){
-        return currentHP;
-    }
-
-    /**
      * Returns type of this player
      *
      * @return type or class of this player
      */
     Player.PlayerType getType(){
         return type;
+    }
+
+    /**
+     * Returns the current HP of this player
+     *
+     * @return currentHP of this player
+     */
+    public double getCurrentHP(){
+        return currentHP;
     }
 
     /**
@@ -190,31 +196,6 @@ public class Player{
     }
 
     /**
-     * This method will select targets for any special ability which require or has Area of Effects
-     *
-     * @param targetingMode The mode to get Target based on the player action
-     *
-     * @return An Array for player positions
-     */
-    private ArrayList<PlayerPosition> findMultipleTargetablePlayers(TargetingMode targetingMode){
-        int i, j;
-        Player[][] targetTeamPlayers = arena.getOpponentTeamPlayers(this);
-        ArrayList<PlayerPosition> playerPositionArrayList = new ArrayList<>();
-
-        if(targetingMode == TargetingMode.selectAllTarget){
-            //Cycle through all player
-            for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
-                for(j = 0; j < arena.getNumRowPlayers(); j++){
-                    if(targetTeamPlayers[i][j].isAlive()){
-                        playerPositionArrayList.add(new PlayerPosition(i, j));      /* Only alive players are eligible */
-                    }
-                }
-            }
-        }
-        return playerPositionArrayList;
-    }
-
-    /**
      * Returns whether this player is sleeping.
      *
      * @return whether this player is sleeping.
@@ -253,7 +234,7 @@ public class Player{
     /**
      * Set internalTurn of this player to 1, it has to be used after This player takeAction()
      */
-    void fillInternalTurn(){
+    private void fillInternalTurn(){
         this.internalTurn = 1;
     }
 
@@ -262,6 +243,83 @@ public class Player{
      */
     private void emptyInternalTurn(){
         this.internalTurn = 0;
+    }
+
+    /**
+     * Similar to statusHandler(), this function will clean all negative buff.
+     * This will be called when a player dies.
+     *
+     * @param player target player
+     */
+    private void cleanBuffWhenDie(Player player){
+
+        player.current_Turn_In_A_Row = 0;               /* This needs to be reset. */
+
+        player.isSleeping = false;                      /* When someone dies, they will no longer sleep. */
+        player.isTaunting = false;                      /* When someone dies, they cannot taunt anyone. */
+
+        player.isCursed = false;                        /* When someone dies, they cannot taunt anyone. */
+        player.cursedBy = null;
+        player.iAmCursing = null;
+    }
+
+    /**
+     * This method is called by Arena when it is this player's turn to take an action.
+     * By default, the player simply just "attack(target)". However, once this player has
+     * fought for "numSpecialTurns" rounds, this player must perform "useSpecialAbility(myTeam, theirTeam)"
+     * where each player type performs his own special move.
+     *
+     * @param arena the current arena
+     */
+    void takeAction(Arena arena){
+        this.emptyInternalTurn();
+        // Check if player has Status (Buff) and enforce the Turn rules.
+        statusHandler(this);
+
+        if(current_Turn_In_A_Row == numSpecialTurns){
+            //Use player's special ability.
+            useSpecialAbility(arena.getFriendlyTeamPlayers(this), arena.getOpponentTeamPlayers(this));
+        }else{
+            //Attack other player.
+            attack(Player.arena.getOpponentTeamPlayers(Player.this));
+        }
+        this.fillInternalTurn();
+        current_Turn_In_A_Row++;
+    }
+
+    /**
+     * This method will choose an ability based on Player Type
+     *
+     * @param myTeam    the array of friendly team
+     * @param theirTeam the array of opponent team
+     */
+    private void useSpecialAbility(Player[][] myTeam, Player[][] theirTeam){
+        switch(type){
+            case Healer:{
+                heal(myTeam);
+                break;
+            }
+            case Tank:{
+                taunt();
+                break;
+            }
+            case Phoenix:{
+                revive(myTeam);
+                break;
+            }
+            case BlackMage:{
+                curse(theirTeam);
+                break;
+            }
+            case Samurai:{
+                doubleSlash(theirTeam);
+                break;
+            }
+            case Cherry:{
+                fortuneCookies(theirTeam);
+            }
+        }
+        current_Turn_In_A_Row = 0;
     }
 
     /**
@@ -318,7 +376,7 @@ public class Player{
                 ArrayList<PlayerPosition> playerPositionArrayList = new ArrayList<>();
                 searchLowestHPinArray(TargetingMode.attack_LowestHP, playerPositionArrayList, targetTeamPlayers, minHPValue);
 
-                if(StudentTester.debug_TargetSearching){    /* For Debugging Purposes only */
+                if(debug_TargetSearching){    /* For Debugging Purposes only */
                     System.out.println("Total HP: " + Arena.getSumHP(targetTeamPlayers));
                 }
 
@@ -406,21 +464,216 @@ public class Player{
     }
 
     /**
-     * Similar to statusHandler(), this function will clean all negative buff.
-     * This will be called when a player dies.
+     * This method will select targets for any special ability which require or has Area of Effects
      *
-     * @param player target player
+     * @param targetingMode The mode to get Target based on the player action
+     *
+     * @return An Array for player positions
      */
-    private void cleanBuffWhenDie(Player player){
+    private ArrayList<PlayerPosition> findMultipleTargetablePlayers(TargetingMode targetingMode){
+        int i, j;
+        Player[][] targetTeamPlayers = arena.getOpponentTeamPlayers(this);
+        ArrayList<PlayerPosition> playerPositionArrayList = new ArrayList<>();
 
-        player.current_Turn_In_A_Row = 0;               /* This needs to be reset. */
+        if(targetingMode == TargetingMode.selectAllTarget){
+            //Cycle through all player
+            for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
+                for(j = 0; j < arena.getNumRowPlayers(); j++){
+                    if(targetTeamPlayers[i][j].isAlive()){
+                        playerPositionArrayList.add(new PlayerPosition(i, j));      /* Only alive players are eligible */
+                    }
+                }
+            }
+        }
+        return playerPositionArrayList;
+    }
 
-        player.isSleeping = false;                      /* When someone dies, they will no longer sleep. */
-        player.isTaunting = false;                      /* When someone dies, they cannot taunt anyone. */
+    /**
+     * Deal a certain damage based on player's Attack Taunting will attract this move.
+     *
+     * @param theirTeam the array for victim team
+     */
+    private void attack(Player[][] theirTeam){
+        //Find all possible targets first
+        PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.attack_LowestHP);
 
-        player.isCursed = false;                        /* When someone dies, they cannot taunt anyone. */
-        player.cursedBy = null;
-        player.iAmCursing = null;
+        //If there is no target stop and return
+        if(targetPosition == null){
+            return;
+        }
+        Player target = theirTeam[targetPosition.getI()][targetPosition.getJ()];
+
+        if(debug_ActionMessages){     /* For Debugging Purposes only */
+            System.out.println(toStringDebug("attacks", target));
+        }
+
+        target.currentHP -= atk;            /* Reduces target's current HP by the number of this player's attack */
+        if(target.currentHP < 0){           /* If the target's HP reduce to less than 0, set it back to 0 */
+            // For debugging purpose only!
+            //if(debug_ActionMessages){
+            //    System.out.println("# " + getOpponentTeam().name() + target.playerPosition.toReadableString() + " {" + target.type.name() + "} " + " dies");
+            //}
+            target.currentHP = 0;
+            cleanBuffWhenDie(target);       /* Clean any buff on the target player since the target is killed */
+
+        }
+    }
+
+    /**
+     * Attack the target twice. Taunting will attract this move.
+     *
+     * @param theirTeam the array for victim team
+     */
+    private void doubleSlash(Player[][] theirTeam){
+        //Find all possible targets first
+        PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.attack_LowestHP);
+
+        //If there is no target stop and return
+        if(targetPosition == null){
+            return;
+        }
+        Player target = theirTeam[targetPosition.getI()][targetPosition.getJ()];
+
+        if(debug_ActionMessages){     /* For Debugging Purposes only */
+            System.out.println(toStringDebug("double-slashes", target));
+        }
+
+        for(int i = 1; i <= 2; i++){            /* Attacking twice */
+            target.currentHP -= atk;            /* Reduces target's current HP by the number of this player's attack */
+            if(target.currentHP < 0){           /* If the target's HP reduce to less than 0, set it back to 0 */
+                //if(debug_ActionMessages){
+                //   System.out.println("# " + getPlayerTeam().name() + playerPosition.toReadableString() + " {" + type.name() + "} " + " dies");
+                //}
+                target.currentHP = 0;
+                cleanBuffWhenDie(target);       /* Clean any buff on the target player since the target is killed */
+            }
+        }
+
+    }
+
+    /**
+     * Make the players of the opposite team attack (including double-slashing and cursing) himself
+     * for one internal turn.
+     */
+    private void taunt(){
+        if(debug_ActionMessages){     /* For Debugging Purposes only */
+            System.out.println("# " + getPlayerTeam().name() + playerPosition.toReadableString() + " {" + type.name() + "} " + "is taunting ");
+        }
+        isTaunting = true;
+    }
+
+    /**
+     * Heal the target by 25% of max HP.
+     *
+     * @param myTeam the array for allied team
+     */
+    private void heal(Player[][] myTeam){
+        //Find all possible targets first
+        PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.heal_teamLowestHP);
+
+        //If there is no target stop and return
+        if(targetPosition == null){
+            if(debug_TargetSearching){     /* For Debugging Purposes only */
+                System.out.println("No target for healing");
+            }
+            return;
+        }
+        Player target = myTeam[targetPosition.getI()][targetPosition.getJ()];
+
+        target.currentHP += (0.25 * target.maxHP);      /* Heals target by 25% of target's max HP */
+        if(target.currentHP > target.maxHP){        /* If current HP exceeds max HP, set it to equal value of max HP */
+            target.currentHP = target.maxHP;
+        }
+
+        if(debug_ActionMessages){     /* For Debugging Purposes only */
+            System.out.println(toStringDebug("heals", target));
+        }
+
+    }
+
+    /**
+     * Heal dead player the target by 30% of max HP.
+     *
+     * @param myTeam the array for allied team
+     */
+    private void revive(Player[][] myTeam){
+        PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.revive_teamLowestHP);
+
+        //If there is no target stop and return
+        if(targetPosition == null){
+            return;
+        }
+        Player target = myTeam[targetPosition.getI()][targetPosition.getJ()];
+
+        target.currentHP += 0.30 * target.maxHP;        /* Heals target by 30% of target's max HP */
+
+        if(target.currentHP > target.maxHP){        /* THIS IS REDUNDANT. If current HP exceeds max HP, set it to equal value of max HP */
+            target.currentHP = target.maxHP;
+        }
+
+        if(debug_ActionMessages){     /* For Debugging Purposes only */
+            System.out.println(toStringDebug("revives", target));
+        }
+    }
+
+    /**
+     * Give curse status effect to an opponent
+     *
+     * @param theirTeam opponent team
+     */
+    private void curse(Player[][] theirTeam){
+        PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.attack_LowestHP);
+
+        //If there is no target stop and return
+        if(targetPosition == null){
+            return;
+        }
+        Player target = theirTeam[targetPosition.getI()][targetPosition.getJ()];
+
+        this.iAmCursing = target;       /* The Curser will remember their target. */
+        target.isCursed = true;     /* The Target is now cursed. */
+        target.cursedBy = Player.this;      /* The Curse Target will remember their curser. */
+
+        if(debug_ActionMessages){     /* For Debugging Purposes only */
+            System.out.println(toStringDebug("curses", target));
+        }
+    }
+
+    /**
+     * Make the players of the opposite team sleep for one internal turn
+     *
+     * @param theirTeam opponent team
+     */
+    private void fortuneCookies(Player[][] theirTeam){
+        int i, j, countPlayerPosition = 0;
+
+        if(debug_ActionMessages){     /* For Debugging Purposes only */
+            System.out.println("# " + getPlayerTeam().name() + playerPosition.toReadableString()
+                                       + " {" + type.name() + "} " + " uses fortune cookies to " + Arena.team_toString(this.getOpponentTeam()));
+        }
+        ArrayList<PlayerPosition> playerPositionArrayList = findMultipleTargetablePlayers(TargetingMode.selectAllTarget);
+
+        if(debug_TargetSearching){    /* For Debugging Purposes only */
+            for(i = 0; i < playerPositionArrayList.size(); i++){
+                System.out.println("#" + i + ": " + playerPositionArrayList.get(i).toString());
+            }
+            System.out.println("playerPositionArrayList.size() = " + playerPositionArrayList.size());
+        }
+
+        //Cycles through every member
+        for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
+            for(j = 0; j < arena.getNumRowPlayers(); j++){
+                if(playerPositionArrayList.get(countPlayerPosition).getI() == i
+                        && playerPositionArrayList.get(countPlayerPosition).getJ() == j && !theirTeam[i][j].isSleeping){
+                    theirTeam[i][j].turnsSinceStartSleeping = 0;
+                    theirTeam[i][j].isSleeping = true;
+                    countPlayerPosition++;
+                    if(countPlayerPosition == playerPositionArrayList.size()){      /* If every target is sleep, stop the loop */
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -461,7 +714,7 @@ public class Player{
                 if(targetTeamPlayers[i][j].isAlive() && targetTeamPlayers[i][j].currentHP == minValue){
                     playerPositionArrayList.add(new PlayerPosition(i, j));
 
-                    if(StudentTester.debug_TargetSearching){     /* For Debugging Purposes only */
+                    if(debug_TargetSearching){     /* For Debugging Purposes only */
                         System.out.println(playerPositionArrayList.get(playerPositionArrayList.size() - 1).toString());
                     }
                 }
@@ -479,253 +732,6 @@ public class Player{
                 for(j = 0; j < arena.getNumRowPlayers(); j++){
                     if(!targetTeamPlayers[i][j].isAlive()){
                         playerPositionArrayList.add(new PlayerPosition(i, j));
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * This method is called by Arena when it is this player's turn to take an action.
-     * By default, the player simply just "attack(target)". However, once this player has
-     * fought for "numSpecialTurns" rounds, this player must perform "useSpecialAbility(myTeam, theirTeam)"
-     * where each player type performs his own special move.
-     *
-     * @param arena the current arena
-     */
-    void takeAction(Arena arena){
-        this.emptyInternalTurn();
-        // Check if player has Status (Buff) and enforce the Turn rules.
-        statusHandler(this);
-
-        if(current_Turn_In_A_Row == numSpecialTurns){
-            //Use player's special ability.
-            useSpecialAbility(arena.getFriendlyTeamPlayers(this), arena.getOpponentTeamPlayers(this));
-        }else{
-            //Attack other player.
-            attack(Player.arena.getOpponentTeamPlayers(Player.this));
-        }
-        this.fillInternalTurn();
-        current_Turn_In_A_Row++;
-    }
-
-    /**
-     * This method will choose an ability based on Player Type
-     *
-     * @param myTeam    the array of friendly team
-     * @param theirTeam the array of opponent team
-     */
-    private void useSpecialAbility(Player[][] myTeam, Player[][] theirTeam){
-        switch(type){
-            case Healer:{
-                heal(myTeam);
-                break;
-            }
-            case Tank:{
-                taunt();
-                break;
-            }
-            case Phoenix:{
-                revive(myTeam);
-                break;
-            }
-            case BlackMage:{
-                curse(theirTeam);
-                break;
-            }
-            case Samurai:{
-                doubleSlash(theirTeam);
-                break;
-            }
-            case Cherry:{
-                fortuneCookies(theirTeam);
-            }
-        }
-        current_Turn_In_A_Row = 0;
-    }
-
-    /**
-     * Deal a certain damage based on player's Attack Taunting will attract this move.
-     *
-     * @param theirTeam the array for victim team
-     */
-    private void attack(Player[][] theirTeam){
-        //Find all possible targets first
-        PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.attack_LowestHP);
-
-        //If there is no target stop and return
-        if(targetPosition == null){
-            return;
-        }
-        Player target = theirTeam[targetPosition.getI()][targetPosition.getJ()];
-
-        if(StudentTester.debug_ActionMessages){     /* For Debugging Purposes only */
-            System.out.println(toStringDebug("attacks", target));
-        }
-
-        target.currentHP -= atk;            /* Reduces target's current HP by the number of this player's attack */
-        if(target.currentHP < 0){           /* If the target's HP reduce to less than 0, set it back to 0 */
-            // For debugging purpose only!
-            //if(StudentTester.debug_ActionMessages){
-            //    System.out.println("# " + getOpponentTeam().name() + target.playerPosition.toReadableString() + " {" + target.type.name() + "} " + " dies");
-            //}
-            target.currentHP = 0;
-            cleanBuffWhenDie(target);       /* Clean any buff on the target player since the target is killed */
-
-        }
-    }
-
-    /**
-     * Attack the target twice. Taunting will attract this move.
-     *
-     * @param theirTeam the array for victim team
-     */
-    private void doubleSlash(Player[][] theirTeam){
-        //Find all possible targets first
-        PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.attack_LowestHP);
-
-        //If there is no target stop and return
-        if(targetPosition == null){
-            return;
-        }
-        Player target = theirTeam[targetPosition.getI()][targetPosition.getJ()];
-
-        if(StudentTester.debug_ActionMessages){     /* For Debugging Purposes only */
-            System.out.println(toStringDebug("double-slashes", target));
-        }
-
-        for(int i = 1; i <= 2; i++){            /* Attacking twice */
-            target.currentHP -= atk;            /* Reduces target's current HP by the number of this player's attack */
-            if(target.currentHP < 0){           /* If the target's HP reduce to less than 0, set it back to 0 */
-                //if(StudentTester.debug_ActionMessages){
-                //   System.out.println("# " + getPlayerTeam().name() + playerPosition.toReadableString() + " {" + type.name() + "} " + " dies");
-                //}
-                target.currentHP = 0;
-                cleanBuffWhenDie(target);       /* Clean any buff on the target player since the target is killed */
-            }
-        }
-
-    }
-
-    /**
-     * Make the players of the opposite team attack (including double-slashing and cursing) himself
-     * for one internal turn.
-     */
-    private void taunt(){
-        if(StudentTester.debug_ActionMessages){     /* For Debugging Purposes only */
-            System.out.println("# " + getPlayerTeam().name() + playerPosition.toReadableString() + " {" + type.name() + "} " + "is taunting ");
-        }
-        isTaunting = true;
-    }
-
-    /**
-     * Heal the target by 25% of max HP.
-     *
-     * @param myTeam the array for allied team
-     */
-    private void heal(Player[][] myTeam){
-        //Find all possible targets first
-        PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.heal_teamLowestHP);
-
-        //If there is no target stop and return
-        if(targetPosition == null){
-            if(StudentTester.debug_TargetSearching){     /* For Debugging Purposes only */
-                System.out.println("No target for healing");
-            }
-            return;
-        }
-        Player target = myTeam[targetPosition.getI()][targetPosition.getJ()];
-
-        target.currentHP += (0.25 * target.maxHP);      /* Heals target by 25% of target's max HP */
-        if(target.currentHP > target.maxHP){        /* If current HP exceeds max HP, set it to equal value of max HP */
-            target.currentHP = target.maxHP;
-        }
-
-        if(StudentTester.debug_ActionMessages){     /* For Debugging Purposes only */
-            System.out.println(toStringDebug("heals", target));
-        }
-
-    }
-
-    /**
-     * Heal dead player the target by 30% of max HP.
-     *
-     * @param myTeam the array for allied team
-     */
-    private void revive(Player[][] myTeam){
-        PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.revive_teamLowestHP);
-
-        //If there is no target stop and return
-        if(targetPosition == null){
-            return;
-        }
-        Player target = myTeam[targetPosition.getI()][targetPosition.getJ()];
-
-        target.currentHP += 0.30 * target.maxHP;        /* Heals target by 30% of target's max HP */
-
-        if(target.currentHP > target.maxHP){        /* THIS IS REDUNDANT. If current HP exceeds max HP, set it to equal value of max HP */
-            target.currentHP = target.maxHP;
-        }
-
-        if(StudentTester.debug_ActionMessages){     /* For Debugging Purposes only */
-            System.out.println(toStringDebug("revives", target));
-        }
-    }
-
-    /**
-     * Give curse status effect to an opponent
-     *
-     * @param theirTeam opponent team
-     */
-    private void curse(Player[][] theirTeam){
-        PlayerPosition targetPosition = findTargetablePlayers(TargetingMode.attack_LowestHP);
-
-        //If there is no target stop and return
-        if(targetPosition == null){
-            return;
-        }
-        Player target = theirTeam[targetPosition.getI()][targetPosition.getJ()];
-
-        this.iAmCursing = target;       /* The Curser will remember their target. */
-        target.isCursed = true;     /* The Target is now cursed. */
-        target.cursedBy = Player.this;      /* The Curse Target will remember their curser. */
-
-        if(StudentTester.debug_ActionMessages){     /* For Debugging Purposes only */
-            System.out.println(toStringDebug("curses", target));
-        }
-    }
-
-    /**
-     * Make the players of the opposite team sleep for one internal turn
-     *
-     * @param theirTeam opponent team
-     */
-    private void fortuneCookies(Player[][] theirTeam){
-        int i, j, countPlayerPosition = 0;
-
-        if(StudentTester.debug_ActionMessages){     /* For Debugging Purposes only */
-            System.out.println("# " + getPlayerTeam().name() + playerPosition.toReadableString()
-                                       + " {" + type.name() + "} " + " uses fortune cookies to " + Arena.team_toString(this.getOpponentTeam()));
-        }
-        ArrayList<PlayerPosition> playerPositionArrayList = findMultipleTargetablePlayers(TargetingMode.selectAllTarget);
-
-        if(StudentTester.debug_TargetSearching){    /* For Debugging Purposes only */
-            for(i = 0; i < playerPositionArrayList.size(); i++){
-                System.out.println("#" + i + ": " + playerPositionArrayList.get(i).toString());
-            }
-            System.out.println("playerPositionArrayList.size() = " + playerPositionArrayList.size());
-        }
-
-        //Cycles through every member
-        for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
-            for(j = 0; j < arena.getNumRowPlayers(); j++){
-                if(playerPositionArrayList.get(countPlayerPosition).getI() == i
-                        && playerPositionArrayList.get(countPlayerPosition).getJ() == j && !theirTeam[i][j].isSleeping){
-                    theirTeam[i][j].turnsSinceStartSleeping = 0;
-                    theirTeam[i][j].isSleeping = true;
-                    countPlayerPosition++;
-                    if(countPlayerPosition == playerPositionArrayList.size()){      /* If every target is sleep, stop the loop */
-                        break;
                     }
                 }
             }
@@ -774,5 +780,112 @@ public class Player{
     public String toStringDebug(String move, Player target){
         return "# " + getPlayerTeam().name() + playerPosition.toReadableString() + " {" + type.name() + "} "
                 + move + " " + target.getPlayerTeam().name() + target.playerPosition.toReadableString() + " {" + target.type.name() + "}";
+    }
+}
+
+
+/*
+ * This java file is part of Project 1 of subject ITCS208 - Object Oriented Programming of Mahidol University, Faculty of ICT
+ * Modified by Tanawin Wichit, ID 6088221, a section 1 student.
+ */
+
+class PlayerPosition{
+
+    private int i;
+    private int j;
+
+    /**
+     * The Default Constructor for PlayerPosition
+     */
+    public PlayerPosition(){
+        this.i = 0;
+        this.j = 0;
+    }
+
+    /**
+     * The Constructor for PlayerPosition
+     *
+     * @param i A position in Array of Player (Player[i][]), known as Row
+     * @param j A position in Array of Player (Player[][j]), known as Player
+     */
+    public PlayerPosition(int i, int j){
+        this.i = i;
+        this.j = j;
+    }
+
+    /**
+     * @return Get the Row that player is in
+     */
+    public int getI(){
+        return i;
+    }
+
+    /**
+     * @return Get the Position that player is in
+     */
+    public int getJ(){
+        return j;
+    }
+
+    /**
+     * Set the Row that player is in
+     *
+     * @param i New value for Row
+     */
+    public void setI(int i){
+        this.i = i;
+    }
+
+    /**
+     * Set the Position in a Row that player is in
+     *
+     * @param j New value for Position in a Row
+     */
+    public void setJ(int j){
+        this.j = j;
+    }
+
+    /**
+     * Compare 2 PlayerPosition if one is lower than another by
+     * Comparing Row
+     * - If row (i) is lower, then return true
+     * - If row is the same, then compare position (j)
+     *
+     * @param otherPlayerPosition the comparision target
+     *
+     * @return true If this position is smaller
+     */
+    public boolean isLowerThan(PlayerPosition otherPlayerPosition){
+        if(this.i < otherPlayerPosition.i){
+            return true;
+        }else if(this.i == otherPlayerPosition.i){
+            if(this.j < otherPlayerPosition.j){
+                return true;
+            }else{
+                return false;
+            }
+        }else{
+            return false;
+        }
+    }
+
+    /**
+     * Process current i j to a string
+     *
+     * @return order pair of i and j
+     */
+    @Override
+    public String toString(){
+        return "(" + getI() + ", " + getJ() + ")";
+    }
+
+    public String toReadableString(){
+        String row;
+        if(getI() == 0){
+            row = "Front";
+        }else{
+            row = "Back";
+        }
+        return "[" + row + "][" + (getJ() + 1) + "]";
     }
 }
