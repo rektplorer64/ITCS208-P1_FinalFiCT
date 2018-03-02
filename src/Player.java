@@ -9,13 +9,15 @@ import java.util.ArrayList;
 public class Player{
 
     private static final boolean debug_TargetSearching = false;        /* For debugging purposes only, this variable
-                                                                         controls the visibility of target searching */
+                                                                         controls the visibility of target searching log */
 
     public static final boolean debug_ActionMessages = true;         /* For debugging purposes only, this variable
                                                                          controls the visibility of battle log */
 
+    //Enum for Player Types which are based on given Rules
     public enum PlayerType{Healer, Tank, Samurai, BlackMage, Phoenix, Cherry}
 
+    //Enum for Targeting Modes which are categorized based on given Rules
     public enum TargetingMode{attack_LowestHP, heal_teamLowestHP, selectAllTarget, revive_teamLowestHP}
 
     private final int MIN_HP_VALUE = 6000;        //This variable is used in finding lowest number
@@ -33,7 +35,7 @@ public class Player{
     private double atk;                           //Attack power of this player
     private int numSpecialTurns;                  //Number of Special Turns of this player
 
-    private int current_Turn_In_A_Row;            //Number of Special Turns of this player
+    private int current_Turn_In_A_Row;            //Number of Current Turns-in-a-row  of this player
 
     /* Status */
     private boolean isTaunting;                   //Priority of this player to being attacked
@@ -66,6 +68,7 @@ public class Player{
         internalTurn = 0;
         current_Turn_In_A_Row = 1;
 
+        //These configurations are based on the given set of Rules
         switch(_type){
             case Healer:{
                 maxHP = 4790;
@@ -85,21 +88,18 @@ public class Player{
                 numSpecialTurns = 3;
                 break;
             }
-
             case BlackMage:{
                 maxHP = 4175;
                 atk = 303;
                 numSpecialTurns = 4;
                 break;
             }
-
             case Phoenix:{
                 maxHP = 4175;
                 atk = 209;
                 numSpecialTurns = 8;
                 break;
             }
-
             case Cherry:{
                 maxHP = 3560;
                 atk = 198;
@@ -109,6 +109,10 @@ public class Player{
         }
         currentHP = maxHP;
     }
+
+    /*
+        Fields Getters and Setters
+     */
 
     /**
      * Returns type of this player
@@ -231,6 +235,10 @@ public class Player{
         return isTaunting;
     }
 
+    /*
+        Turn Utilities Methods
+     */
+
     /**
      * Set internalTurn of this player to 1, it has to be used after This player takeAction()
      */
@@ -262,6 +270,10 @@ public class Player{
         player.cursedBy = null;
         player.iAmCursing = null;
     }
+
+    /*
+        Methods for Player to TAKE ACTIONS
+     */
 
     /**
      * This method is called by Arena when it is this player's turn to take an action.
@@ -414,7 +426,8 @@ public class Player{
                 ArrayList<PlayerPosition> playerPositionArrayList = new ArrayList<>();
                 searchLowestHPinArray(TargetingMode.heal_teamLowestHP, playerPositionArrayList, targetTeamPlayers, minHPValue);
 
-                if(playerPositionArrayList.size() == 1){
+                if(playerPositionArrayList.size() == 1){    /* If there are only 1 player who has the lowest HP. */
+                    //Returns the only element in ArrayList
                     return playerPositionArrayList.get(0);
                 }else if(playerPositionArrayList.size() > 1){
                     //Returns the lowest position, see searchLowestPosition()
@@ -423,7 +436,7 @@ public class Player{
 
             }
             case selectAllTarget:{
-                //It is illegal to call this function in this mode. If you call it, you will be arrested.
+                //It is illegal to call this function in this mode. If you call it, nothing will happen.
                 break;
             }
             case revive_teamLowestHP:{      /* Called by revive() */
@@ -515,7 +528,6 @@ public class Player{
             //}
             target.currentHP = 0;
             cleanBuffWhenDie(target);       /* Clean any buff on the target player since the target is killed */
-
         }
     }
 
@@ -677,6 +689,9 @@ public class Player{
     }
 
     /**
+     * This method's Algorithm may look a little bit overthought. I know there is a more simple way but for the flexibility
+     * of the codebase, I decided leave it like this.
+     *
      * By giving an ArrayList of PlayerPosition and Team Player Array, the method can search for lowest Position.
      *
      * @param playerPositionArrayList ArrayList of Player Position
@@ -710,7 +725,7 @@ public class Player{
         int i, j;
         if(targetingMode == TargetingMode.attack_LowestHP){
             i = arena.getFrontRow(targetTeamPlayers);
-            for(j = 0; j < arena.getNumRowPlayers(); j++){
+            for(j = 0; j < arena.getNumRowPlayers(); j++){      /* Find and get the position of player who has current HP equal to the lowest HP in THE FRONT ROW */
                 if(targetTeamPlayers[i][j].isAlive() && targetTeamPlayers[i][j].currentHP == minValue){
                     playerPositionArrayList.add(new PlayerPosition(i, j));
 
@@ -719,7 +734,7 @@ public class Player{
                     }
                 }
             }
-        }else if(targetingMode == TargetingMode.heal_teamLowestHP){
+        }else if(targetingMode == TargetingMode.heal_teamLowestHP){     /* Find and get the position of player who has current HP equal to the lowest HP */
             for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
                 for(j = 0; j < arena.getNumRowPlayers(); j++){
                     if(targetTeamPlayers[i][j].currentHP == minValue){
@@ -728,7 +743,7 @@ public class Player{
                 }
             }
         }else if(targetingMode == TargetingMode.revive_teamLowestHP){
-            for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
+            for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){      /* Find and get the position of player who has current HP equals to ZERO */
                 for(j = 0; j < arena.getNumRowPlayers(); j++){
                     if(!targetTeamPlayers[i][j].isAlive()){
                         playerPositionArrayList.add(new PlayerPosition(i, j));
@@ -736,6 +751,7 @@ public class Player{
                 }
             }
         }
+        /* No need to return anything, because This method receives ArrayList parameter. Therefore we only need to call add() */
     }
 
     /**
@@ -759,6 +775,10 @@ public class Player{
             target.isSleeping = false;         /* The target wakes up */
         }
     }
+
+    /*
+        Debugging Methods
+    */
 
     /**
      * This method overrides the default Object's toString() and is already implemented for you.
@@ -791,8 +811,8 @@ public class Player{
 
 class PlayerPosition{
 
-    private int i;
-    private int j;
+    private int i;      /* A position in Array of Player (Player[i][]), known as Row */
+    private int j;      /* A position in Array of Player (Player[][j]), known as Player */
 
     /**
      * The Default Constructor for PlayerPosition
@@ -870,7 +890,7 @@ class PlayerPosition{
     }
 
     /**
-     * Process current i j to a string
+     * Process current i and j to a string
      *
      * @return order pair of i and j
      */

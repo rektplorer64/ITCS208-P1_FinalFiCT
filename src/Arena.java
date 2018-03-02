@@ -22,8 +22,8 @@ public class Arena{
     private static final int MAX_EACH_TYPE = 3;    //Max number of players of each type, in each team.
     private static int numRowPlayers;
 
-    private Player[][] teamA = null;    //two dimensional array representing the players of Team A
-    private Player[][] teamB = null;    //two dimensional array representing the players of Team B
+    private Player[][] teamA;    //Two dimensional array representing the players of Team A
+    private Player[][] teamB;    //Two dimensional array representing the players of Team B
 
     private final Path logFile = Paths.get("battle_log.txt");
 
@@ -202,14 +202,6 @@ public class Arena{
             return teamA;
         }
         return null;
-    }
-
-    public Player[][] getTeamA(){
-        return teamA;
-    }
-
-    public Player[][] getTeamB(){
-        return teamB;
     }
 
     /**
