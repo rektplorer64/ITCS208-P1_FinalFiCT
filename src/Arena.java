@@ -2,6 +2,9 @@
 /*
  * This java file is part of Project 1 of subject ITCS208 - Object Oriented Programming of Mahidol University, Faculty of ICT
  * Modified by Tanawin Wichit, ID 6088221, a section 1 student.
+ *
+ * Last Updated: 3/3/2017
+ *  - Removed several redundant methods
  */
 
 import java.io.IOException;
@@ -142,12 +145,13 @@ public class Arena{
             Arena.displayArea(this, true);      /* Reports each round */
             logAfterEachRound();                            /* Logs each round */
 
-            //If there are a winning team, break the loop, thus end game.
+            //If there are a winning team, break the loop, thus end the game.
             if(getWinningTeam() != null){
                 break;
             }
         }
 
+        //Shows the result!!
         System.out.println("@@@ Team " + identifyTeam(getWinningTeam()).name() + " won.");
 
     }
@@ -392,7 +396,6 @@ public class Arena{
             return Team.B;
         }
     }
-
 
     /**
      * Returns the sum of HP of all the players in the given "team"

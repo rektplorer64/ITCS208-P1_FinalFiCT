@@ -2,6 +2,10 @@
 /*
  * This java file is part of Project 1 of subject ITCS208 - Object Oriented Programming of Mahidol University, Faculty of ICT
  * Modified by Tanawin Wichit, ID 6088221, a section 1 student.
+ *
+ * Last Updated: 3/3/2017
+ *  - Removed several redundant methods and variables
+ *  - Simplified the Algorithms for searching
  */
 
 import java.util.ArrayList;
@@ -28,14 +32,13 @@ public class Player{
     /* Must have fields for every players */
     private PlayerPosition playerPosition;        //Position of the player
     private PlayerType type;                      //Type of this player. Can be one of either Healer, Tank, Samurai, BlackMage, or Phoenix
-    private int internalTurn;                     //A turn meter which will reset to ONE AFTER THE PLAYER takeAction(), and will be set to ZERO BEFORE THE PLAYER takeAction()
 
     private double maxHP;                         //Max HP of this player
     private double currentHP;                     //Current HP of this player
     private double atk;                           //Attack power of this player
     private int numSpecialTurns;                  //Number of Special Turns of this player
 
-    private int current_Turn_In_A_Row;            //Number of Current Turns-in-a-row  of this player
+    private int current_Turn_In_A_Row;            //Number of Current Turns-in-a-row of this player
 
     /* Status */
     private boolean isTaunting;                   //Priority of this player to being attacked
@@ -65,7 +68,6 @@ public class Player{
         this.cursedBy = null;
         this.isCursed = false;
 
-        internalTurn = 0;
         current_Turn_In_A_Row = 1;
 
         //These configurations are based on the given set of Rules
@@ -133,30 +135,12 @@ public class Player{
     }
 
     /**
-     * Returns max HP of this player.
-     *
-     * @return maxHP of this player
-     */
-    public double getMaxHP(){
-        return maxHP;
-    }
-
-    /**
      * This method returns getTurnsSinceStartSleeping of this player.
      *
      * @return TurnsSinceStartSleeping
      */
     public int getTurnsSinceStartSleeping(){
         return turnsSinceStartSleeping;
-    }
-
-    /**
-     * Returns Internal Turn of this player.
-     *
-     * @return internalTurn
-     */
-    public int getInternalTurn(){
-        return internalTurn;
     }
 
     /**
@@ -173,7 +157,7 @@ public class Player{
      *
      * @return opponent team of this player
      */
-    public Arena.Team getOpponentTeam(){
+    private Arena.Team getOpponentTeam(){
         if(this.getPlayerTeam() == Arena.Team.A){
             return Arena.Team.B;
         }else{
@@ -240,20 +224,6 @@ public class Player{
      */
 
     /**
-     * Set internalTurn of this player to 1, it has to be used after This player takeAction()
-     */
-    private void fillInternalTurn(){
-        this.internalTurn = 1;
-    }
-
-    /**
-     * Set internalTurn of this player to 0, it has to be used before This player takeAction()
-     */
-    private void emptyInternalTurn(){
-        this.internalTurn = 0;
-    }
-
-    /**
      * Similar to statusHandler(), this function will clean all negative buff.
      * This will be called when a player dies.
      *
@@ -284,7 +254,6 @@ public class Player{
      * @param arena the current arena
      */
     void takeAction(Arena arena){
-        this.emptyInternalTurn();
         // Check if player has Status (Buff) and enforce the Turn rules.
         statusHandler(this);
 
@@ -295,7 +264,8 @@ public class Player{
             //Attack other player.
             attack(Player.arena.getOpponentTeamPlayers(Player.this));
         }
-        this.fillInternalTurn();
+
+        //Increases number of turn in a row
         current_Turn_In_A_Row++;
     }
 
@@ -328,7 +298,7 @@ public class Player{
                 break;
             }
             case Cherry:{
-                fortuneCookies(theirTeam);
+                giveFortuneCookies(theirTeam);
             }
         }
         current_Turn_In_A_Row = 0;
@@ -348,30 +318,20 @@ public class Player{
      */
     private PlayerPosition findTargetablePlayers(TargetingMode targetingMode){
         int i, j;
-        Player[][] targetTeamPlayers;
+        Player[][] targetTeamPlayers;   /* The Array for all target which depends on searching mode (It can be friendly team or opponent team) */
 
         switch(targetingMode){      /* Targeting Mode Classification */
             case attack_LowestHP:{      /* Called by attack() and curse() */
-
                 //Assigns target team which is opponent team.
                 targetTeamPlayers = arena.getOpponentTeamPlayers(this);
 
-                ArrayList<PlayerPosition> tauntingPlayerPosition = new ArrayList<>();
                 //Search for all player who is taunting (They have higher priority)
                 for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
                     for(j = 0; j < arena.getNumRowPlayers(); j++){
                         if(targetTeamPlayers[i][j].isAlive() && targetTeamPlayers[i][j].isTaunting){
-                            tauntingPlayerPosition.add(new PlayerPosition(i, j));
+                            return targetTeamPlayers[i][j].playerPosition;
                         }
                     }
-                }
-
-                if(tauntingPlayerPosition.size() > 1){      /* If there are more than 1 player taunting. */
-                    //Returns the lowest position, see searchLowestPosition(), if there are multiple taunt target with same HP.
-                    return searchLowestPosition(tauntingPlayerPosition, targetTeamPlayers);
-                }else if(tauntingPlayerPosition.size() == 1){       /* If there is only 1 player taunting. */
-                    //Returns the only one who is taunting
-                    return tauntingPlayerPosition.get(0);
                 }
 
                 /* If there is no player taunting. */
@@ -392,9 +352,7 @@ public class Player{
                     System.out.println("Total HP: " + Arena.getSumHP(targetTeamPlayers));
                 }
 
-                if(playerPositionArrayList.size() == 1){        /* If there are only 1 player who has the lowest HP. */
-                    return playerPositionArrayList.get(0);
-                }else if(playerPositionArrayList.size() == 0){      /* On the front row, if all player is dead */
+                if(playerPositionArrayList.size() == 0){      /* On the front row, if all player is dead */
                     if(Arena.getSumHP(targetTeamPlayers) == 0.0){
                         //If all player of the opponent team has sum of current HP = 0
                         return null;
@@ -402,37 +360,40 @@ public class Player{
                 }
 
                 //Returns the lowest position, see searchLowestPosition()
-                return searchLowestPosition(playerPositionArrayList, targetTeamPlayers);
+                return playerPositionArrayList.get(0);
 
             }
             case heal_teamLowestHP:{    /* Called by heal() */
-
                 //Assigns target team which is ally team.
                 targetTeamPlayers = arena.getFriendlyTeamPlayers(this);
-                double minHPValue = MIN_HP_VALUE;
+                double minHPValue = 1.2;
 
+                PlayerPosition playerWithLowestHpPosition = null;
                 // Search for lowest HP
                 for(i = 0; i < Arena.NUMBER_OF_ROWS; i++){
                     for(j = 0; j < arena.getNumRowPlayers(); j++){
+                        double percentage = targetTeamPlayers[i][j].currentHP / targetTeamPlayers[i][j].maxHP;
                         if(targetTeamPlayers[i][j].isAlive() && !targetTeamPlayers[i][j].isCursed()
                                 && targetTeamPlayers[i][j].currentHP < targetTeamPlayers[i][j].maxHP
-                                && targetTeamPlayers[i][j].currentHP <= minHPValue){
-                            minHPValue = targetTeamPlayers[i][j].currentHP;
+                                && percentage <= minHPValue){
+                            minHPValue = targetTeamPlayers[i][j].currentHP / targetTeamPlayers[i][j].maxHP;
+                            playerWithLowestHpPosition = new PlayerPosition(i, j);
                         }
                     }
                 }
 
+                if(playerWithLowestHpPosition == null){     /* If there is no player to heal */
+                    return null;
+                }
+
+                Player playerWithLowestHp = targetTeamPlayers[playerWithLowestHpPosition.getI()][playerWithLowestHpPosition.getJ()];
+
                 //Search player who has HP equals to that Lowest HP
                 ArrayList<PlayerPosition> playerPositionArrayList = new ArrayList<>();
-                searchLowestHPinArray(TargetingMode.heal_teamLowestHP, playerPositionArrayList, targetTeamPlayers, minHPValue);
+                searchLowestHPinArray(TargetingMode.heal_teamLowestHP, playerPositionArrayList, targetTeamPlayers, playerWithLowestHp.currentHP);
 
-                if(playerPositionArrayList.size() == 1){    /* If there are only 1 player who has the lowest HP. */
-                    //Returns the only element in ArrayList
-                    return playerPositionArrayList.get(0);
-                }else if(playerPositionArrayList.size() > 1){
-                    //Returns the lowest position, see searchLowestPosition()
-                    return searchLowestPosition(playerPositionArrayList, targetTeamPlayers);
-                }
+                //Returns the lowest position, see searchLowestPosition()
+                return playerPositionArrayList.get(0);
 
             }
             case selectAllTarget:{
@@ -440,7 +401,6 @@ public class Player{
                 break;
             }
             case revive_teamLowestHP:{      /* Called by revive() */
-
                 //Assigns target team which is ally team.
                 targetTeamPlayers = arena.getFriendlyTeamPlayers(this);
                 int countDead = 0;      /* Count Number of Dead Player */
@@ -462,17 +422,11 @@ public class Player{
                 ArrayList<PlayerPosition> deadPositionsArrayList = new ArrayList<>();
                 searchLowestHPinArray(TargetingMode.revive_teamLowestHP, deadPositionsArrayList, targetTeamPlayers, 0.0);
 
-                PlayerPosition minPosition;
-                if(countDead > 1){
-                    //Returns the lowest position, see searchLowestPosition()
-                    return searchLowestPosition(deadPositionsArrayList, targetTeamPlayers);
-                }else{
-                    minPosition = deadPositionsArrayList.get(0);
-                }
                 //Returns null if there is no target.
-                return minPosition;
+                return deadPositionsArrayList.get(0);
             }
         }
+        //Return null in case of an error
         return null;
     }
 
@@ -656,7 +610,7 @@ public class Player{
      *
      * @param theirTeam opponent team
      */
-    private void fortuneCookies(Player[][] theirTeam){
+    private void giveFortuneCookies(Player[][] theirTeam){
         int i, j, countPlayerPosition = 0;
 
         if(debug_ActionMessages){     /* For Debugging Purposes only */
@@ -691,6 +645,7 @@ public class Player{
     /**
      * This method's Algorithm may look a little bit overthought. I know there is a more simple way but for the flexibility
      * of the codebase, I decided leave it like this.
+     * No longer used!
      *
      * By giving an ArrayList of PlayerPosition and Team Player Array, the method can search for lowest Position.
      *
@@ -763,10 +718,10 @@ public class Player{
             isTaunting = false;     /* If the Player is taunting, remove the buff. */
         }
 
-        //If THE CURSER has a CURSE TARGET and THE CURSER has internalTurn = 0, The CURSED TARGET will no longer CURSED.
+        //If THE CURSER has a CURSE TARGET, The CURSED TARGET will no longer CURSED.
         if(target.iAmCursing != null){
             target.iAmCursing.isCursed = false;     /* The CURSED TARGET will no longer cursed. */
-            target.iAmCursing.cursedBy = null;      /* The CURSED TARGET will no remember the curser. */
+            target.iAmCursing.cursedBy = null;      /* The CURSED TARGET will no longer remember the curser. */
             target.iAmCursing = null;       /* The CURSER will no longer remember the cursed target. */
         }
 
@@ -797,7 +752,7 @@ public class Player{
      *
      * @return A string of battle log
      */
-    public String toStringDebug(String move, Player target){
+    private String toStringDebug(String move, Player target){
         return "# " + getPlayerTeam().name() + playerPosition.toReadableString() + " {" + type.name() + "} "
                 + move + " " + target.getPlayerTeam().name() + target.playerPosition.toReadableString() + " {" + target.type.name() + "}";
     }
@@ -845,24 +800,6 @@ class PlayerPosition{
      */
     public int getJ(){
         return j;
-    }
-
-    /**
-     * Set the Row that player is in
-     *
-     * @param i New value for Row
-     */
-    public void setI(int i){
-        this.i = i;
-    }
-
-    /**
-     * Set the Position in a Row that player is in
-     *
-     * @param j New value for Position in a Row
-     */
-    public void setJ(int j){
-        this.j = j;
     }
 
     /**
